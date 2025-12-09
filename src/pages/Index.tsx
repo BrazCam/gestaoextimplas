@@ -60,9 +60,81 @@ const Index = () => {
     }
   };
 
+  const cleanItemForTable = (tableName: string, item: any) => {
+    const cleanItem = { ...item };
+    
+    // Remove fields that don't belong to certain tables
+    if (tableName === 'extinguishers') {
+      delete cleanItem.local;
+      delete cleanItem.ultimoTesteHidro;
+      delete cleanItem.proximoTesteHidro;
+      delete cleanItem.fabricante;
+      delete cleanItem.comprimento;
+      delete cleanItem.polegada;
+      delete cleanItem.autonomia;
+      delete cleanItem.bateria;
+      delete cleanItem.teste;
+      delete cleanItem.ultimoTeste;
+      delete cleanItem.obs;
+      delete cleanItem.anoFabricacao;
+    } else if (tableName === 'alarms') {
+      delete cleanItem.localizacao;
+      delete cleanItem.ultimoTesteHidro;
+      delete cleanItem.proximoTesteHidro;
+      delete cleanItem.fabricante;
+      delete cleanItem.comprimento;
+      delete cleanItem.polegada;
+      delete cleanItem.autonomia;
+      delete cleanItem.bateria;
+      delete cleanItem.capacidade;
+      delete cleanItem.numeroCilindro;
+      delete cleanItem.testeHidrostatico;
+      delete cleanItem.ultimaManutencao;
+      delete cleanItem.proximaManutencao;
+      delete cleanItem.fabricacao;
+      delete cleanItem.clientId;
+    } else if (tableName === 'hydrants') {
+      delete cleanItem.localizacao;
+      delete cleanItem.autonomia;
+      delete cleanItem.bateria;
+      delete cleanItem.capacidade;
+      delete cleanItem.numeroCilindro;
+      delete cleanItem.testeHidrostatico;
+      delete cleanItem.ultimaManutencao;
+      delete cleanItem.proximaManutencao;
+      delete cleanItem.fabricacao;
+      delete cleanItem.clientId;
+      delete cleanItem.ultimoTeste;
+      delete cleanItem.obs;
+      delete cleanItem.marca;
+      delete cleanItem.teste;
+    } else if (tableName === 'lighting') {
+      delete cleanItem.localizacao;
+      delete cleanItem.ultimoTesteHidro;
+      delete cleanItem.proximoTesteHidro;
+      delete cleanItem.fabricante;
+      delete cleanItem.comprimento;
+      delete cleanItem.polegada;
+      delete cleanItem.capacidade;
+      delete cleanItem.numeroCilindro;
+      delete cleanItem.testeHidrostatico;
+      delete cleanItem.ultimaManutencao;
+      delete cleanItem.proximaManutencao;
+      delete cleanItem.fabricacao;
+      delete cleanItem.clientId;
+      delete cleanItem.ultimoTeste;
+      delete cleanItem.obs;
+      delete cleanItem.marca;
+    }
+    
+    return cleanItem;
+  };
+
   const handleAdd = async (type: string, item: any) => {
     const tableName = getTableName(type);
-    const { error } = await supabase.from(tableName).insert([item] as any);
+    const cleanItem = cleanItemForTable(tableName, item);
+    
+    const { error } = await supabase.from(tableName).insert([cleanItem] as any);
 
     if (error) {
       notify("Erro ao salvar: " + error.message, "error");
@@ -86,7 +158,8 @@ const Index = () => {
 
   const handleUpdate = async (type: string, id: string, newItem: any) => {
     const tableName = getTableName(type);
-    const { error } = await supabase.from(tableName).update(newItem as any).eq('id', id);
+    const cleanItem = cleanItemForTable(tableName, newItem);
+    const { error } = await supabase.from(tableName).update(cleanItem as any).eq('id', id);
 
     if (error) {
       notify("Erro ao atualizar", "error");
