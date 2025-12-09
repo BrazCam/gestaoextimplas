@@ -312,6 +312,19 @@ export const AdminDashboard = ({
 
     let itemToSave = { ...formData };
 
+    // Convert empty strings to null for date fields to avoid PostgreSQL errors
+    const dateFields = [
+      'ultimaManutencao', 'proximaManutencao', 'testeHidrostatico', 
+      'ultimaVistoria', 'proximaVistoria', 'ultimoTeste',
+      'ultimoTesteHidro', 'proximoTesteHidro', 'teste'
+    ];
+    
+    dateFields.forEach(field => {
+      if (itemToSave[field] === '' || itemToSave[field] === undefined) {
+        itemToSave[field] = null;
+      }
+    });
+
     if (activeTab === 'extinguishers') {
       if (formData.ultimaManutencao) {
         const dataManut = new Date(formData.ultimaManutencao);
