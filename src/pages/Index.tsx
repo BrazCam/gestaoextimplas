@@ -93,6 +93,7 @@ const Index = () => {
       delete cleanItem.proximaManutencao;
       delete cleanItem.fabricacao;
       delete cleanItem.clientId;
+      delete cleanItem.teste;
     } else if (tableName === 'hydrants') {
       delete cleanItem.localizacao;
       delete cleanItem.autonomia;
