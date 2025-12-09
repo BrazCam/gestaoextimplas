@@ -310,7 +310,37 @@ export const AdminDashboard = ({
       return;
     }
 
-    let itemToSave = { ...formData };
+    let itemToSave: any = {};
+
+    // Define allowed fields per table type to avoid sending wrong columns
+    const allowedFields: Record<string, string[]> = {
+      extinguishers: [
+        'id', 'sede', 'localizacao', 'tipo', 'capacidade', 'marca', 'fabricacao',
+        'numeroCilindro', 'ultimaManutencao', 'proximaManutencao', 'testeHidrostatico',
+        'ultimaVistoria', 'proximaVistoria', 'status', 'clientId', 'fotoLocal', 'historico'
+      ],
+      alarm: [
+        'id', 'sede', 'local', 'tipo', 'marca', 'anoFabricacao', 'status',
+        'ultimoTeste', 'ultimaVistoria', 'proximaVistoria', 'obs', 'fotoLocal', 'historico'
+      ],
+      hydrant: [
+        'id', 'sede', 'local', 'fabricante', 'anoFabricacao', 'polegada', 'tipo',
+        'comprimento', 'ultimoTesteHidro', 'proximoTesteHidro', 'ultimaVistoria',
+        'proximaVistoria', 'status', 'fotoLocal', 'historico'
+      ],
+      lighting: [
+        'id', 'sede', 'local', 'tipo', 'anoFabricacao', 'autonomia', 'bateria',
+        'status', 'ultimaVistoria', 'proximaVistoria', 'teste', 'fotoLocal', 'historico'
+      ]
+    };
+
+    // Only include allowed fields for the current table type
+    const allowed = allowedFields[activeTab] || [];
+    allowed.forEach(field => {
+      if (formData[field] !== undefined) {
+        itemToSave[field] = formData[field];
+      }
+    });
 
     // Convert empty strings to null for date fields to avoid PostgreSQL errors
     const dateFields = [
