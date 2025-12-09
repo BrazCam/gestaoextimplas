@@ -3,10 +3,11 @@ import {
   Settings, LogOut, Flame, Bell, Droplets, Lightbulb, Zap, Filter,
   PlusCircle, Edit3, Trash2, X, Save, PackagePlus, Building2, Camera,
   Image as ImageIcon, FileDown, FileSpreadsheet, FileUp, Cpu, QrCode,
-  SearchCode, RefreshCcw, ClipboardCheck, Search
+  SearchCode, RefreshCcw, ClipboardCheck, Search, FileText
 } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { RealQRScanner } from './RealQRScanner';
+import { LaudoPdfImporter } from './LaudoPdfImporter';
 import { compressImage } from '@/utils/imageCompression';
 import { Extinguisher, Alarm, Hydrant, Lighting } from '@/types';
 
@@ -42,6 +43,8 @@ export const AdminDashboard = ({
   const [feedItem, setFeedItem] = useState<any>(null);
   const [feedType, setFeedType] = useState<string | null>(null);
   const [isFeedScanning, setIsFeedScanning] = useState(false);
+  const [feedSubTab, setFeedSubTab] = useState<'manual' | 'pdf'>('manual');
+  const [isLaudoModalOpen, setIsLaudoModalOpen] = useState(false);
 
   const uniqueSedes = useMemo(() => {
     const allItems = [...extinguishers, ...alarms, ...hydrants, ...lighting];
@@ -784,81 +787,158 @@ export const AdminDashboard = ({
                 <Zap className="w-6 h-6 mr-2 text-orange-500" /> Alimentação de Equipamento
               </h2>
 
-              <div className="flex flex-col md:flex-row gap-4 mb-8">
-                <div className="flex-1 relative">
-                  <SearchCode className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
-                  <input
-                    className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:outline-none text-lg"
-                    placeholder="Digite o Nº do Cilindro ou ID..."
-                    value={feedSearch}
-                    onChange={e => setFeedSearch(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleFeedSearch(feedSearch)}
-                  />
-                </div>
-                <button onClick={() => handleFeedSearch(feedSearch)} className="bg-slate-800 text-white px-6 py-3 rounded-lg font-bold hover:bg-slate-700">
-                  Buscar
+              {/* Sub-tabs for feeding section */}
+              <div className="flex gap-2 mb-6">
+                <button
+                  onClick={() => setFeedSubTab('manual')}
+                  className={`px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-all ${
+                    feedSubTab === 'manual' 
+                      ? 'bg-orange-600 text-white shadow-md' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <SearchCode className="w-4 h-4" /> Busca Manual
                 </button>
-                <button onClick={() => setIsFeedScanning(true)} className="bg-orange-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-orange-700 flex items-center justify-center">
-                  <QrCode className="w-5 h-5 mr-2" /> Escanear QR
+                <button
+                  onClick={() => setFeedSubTab('pdf')}
+                  className={`px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-all ${
+                    feedSubTab === 'pdf' 
+                      ? 'bg-red-600 text-white shadow-md' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <FileText className="w-4 h-4" /> Importar PDF
                 </button>
               </div>
 
-              {feedItem && (
-                <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 animate-slide-up">
-                  <div className="flex justify-between items-start mb-6">
-                    <div>
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-bold uppercase mb-2 inline-block">
-                        {feedType === 'hydrant' ? 'Mangueira' : 'Extintor'}
-                      </span>
-                      <h3 className="text-3xl font-black text-gray-800">{feedItem.id}</h3>
-                      <p className="text-gray-500 text-lg">{feedItem.local || feedItem.localizacao}</p>
-                      {feedItem.numeroCilindro && <p className="text-sm font-mono text-gray-400 mt-1">Cilindro: {feedItem.numeroCilindro}</p>}
+              {feedSubTab === 'manual' ? (
+                <>
+                  <div className="flex flex-col md:flex-row gap-4 mb-8">
+                    <div className="flex-1 relative">
+                      <SearchCode className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
+                      <input
+                        className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:outline-none text-lg"
+                        placeholder="Digite o Nº do Cilindro ou ID..."
+                        value={feedSearch}
+                        onChange={e => setFeedSearch(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleFeedSearch(feedSearch)}
+                      />
                     </div>
-                    <StatusBadge status={feedItem.status} />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div className="bg-white p-4 rounded border">
-                      <p className="text-xs font-bold text-gray-400 uppercase">Última Recarga/Nível 2</p>
-                      <p className="text-lg font-bold">{feedItem.ultimaManutencao ? new Date(feedItem.ultimaManutencao).toLocaleDateString('pt-BR') : '---'}</p>
-                    </div>
-                    <div className="bg-white p-4 rounded border">
-                      <p className="text-xs font-bold text-gray-400 uppercase">Último Hidrostático/Nível 3</p>
-                      <p className="text-lg font-bold">
-                        {feedItem.testeHidrostatico ? new Date(feedItem.testeHidrostatico).toLocaleDateString('pt-BR') :
-                          (feedItem.ultimoTesteHidro ? new Date(feedItem.ultimoTesteHidro).toLocaleDateString('pt-BR') : '---')}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <button
-                      onClick={() => handleQuickUpdate('recarga')}
-                      className="flex flex-col items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-sm md:text-base shadow-md hover:shadow-lg transition-all"
-                    >
-                      <RefreshCcw className="w-6 h-6" /> Atualizar Recarga (N2)
+                    <button onClick={() => handleFeedSearch(feedSearch)} className="bg-slate-800 text-white px-6 py-3 rounded-lg font-bold hover:bg-slate-700">
+                      Buscar
                     </button>
-                    <button
-                      onClick={() => handleQuickUpdate('hidro')}
-                      className="flex flex-col items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-bold text-sm md:text-base shadow-md hover:shadow-lg transition-all"
-                    >
-                      <Droplets className="w-6 h-6" /> Atualizar Hidrostático (N3)
-                    </button>
-                    <button
-                      onClick={() => handleQuickUpdate('vistoria')}
-                      className="flex flex-col items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-bold text-sm md:text-base shadow-md hover:shadow-lg transition-all"
-                    >
-                      <ClipboardCheck className="w-6 h-6" /> Vistoria Mensal (N1)
+                    <button onClick={() => setIsFeedScanning(true)} className="bg-orange-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-orange-700 flex items-center justify-center">
+                      <QrCode className="w-5 h-5 mr-2" /> Escanear QR
                     </button>
                   </div>
-                  <p className="text-center text-xs text-gray-400 mt-4">As atualizações geram logs automáticos e redefinem o status para OK.</p>
-                </div>
-              )}
 
-              {!feedItem && !feedSearch && (
-                <div className="text-center py-10 text-gray-400">
-                  <Search className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                  <p>Utilize a busca ou scanner para localizar o equipamento e realizar a alimentação.</p>
+                  {feedItem && (
+                    <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 animate-slide-up">
+                      <div className="flex justify-between items-start mb-6">
+                        <div>
+                          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-bold uppercase mb-2 inline-block">
+                            {feedType === 'hydrant' ? 'Mangueira' : 'Extintor'}
+                          </span>
+                          <h3 className="text-3xl font-black text-gray-800">{feedItem.id}</h3>
+                          <p className="text-gray-500 text-lg">{feedItem.local || feedItem.localizacao}</p>
+                          {feedItem.numeroCilindro && <p className="text-sm font-mono text-gray-400 mt-1">Cilindro: {feedItem.numeroCilindro}</p>}
+                        </div>
+                        <StatusBadge status={feedItem.status} />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div className="bg-white p-4 rounded border">
+                          <p className="text-xs font-bold text-gray-400 uppercase">Última Recarga/Nível 2</p>
+                          <p className="text-lg font-bold">{feedItem.ultimaManutencao ? new Date(feedItem.ultimaManutencao).toLocaleDateString('pt-BR') : '---'}</p>
+                        </div>
+                        <div className="bg-white p-4 rounded border">
+                          <p className="text-xs font-bold text-gray-400 uppercase">Último Hidrostático/Nível 3</p>
+                          <p className="text-lg font-bold">
+                            {feedItem.testeHidrostatico ? new Date(feedItem.testeHidrostatico).toLocaleDateString('pt-BR') :
+                              (feedItem.ultimoTesteHidro ? new Date(feedItem.ultimoTesteHidro).toLocaleDateString('pt-BR') : '---')}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <button
+                          onClick={() => handleQuickUpdate('recarga')}
+                          className="flex flex-col items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-sm md:text-base shadow-md hover:shadow-lg transition-all"
+                        >
+                          <RefreshCcw className="w-6 h-6" /> Atualizar Recarga (N2)
+                        </button>
+                        <button
+                          onClick={() => handleQuickUpdate('hidro')}
+                          className="flex flex-col items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-bold text-sm md:text-base shadow-md hover:shadow-lg transition-all"
+                        >
+                          <Droplets className="w-6 h-6" /> Atualizar Hidrostático (N3)
+                        </button>
+                        <button
+                          onClick={() => handleQuickUpdate('vistoria')}
+                          className="flex flex-col items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-bold text-sm md:text-base shadow-md hover:shadow-lg transition-all"
+                        >
+                          <ClipboardCheck className="w-6 h-6" /> Vistoria Mensal (N1)
+                        </button>
+                      </div>
+                      <p className="text-center text-xs text-gray-400 mt-4">As atualizações geram logs automáticos e redefinem o status para OK.</p>
+                    </div>
+                  )}
+
+                  {!feedItem && !feedSearch && (
+                    <div className="text-center py-10 text-gray-400">
+                      <Search className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                      <p>Utilize a busca ou scanner para localizar o equipamento e realizar a alimentação.</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="space-y-6">
+                  <div className="bg-gradient-to-r from-red-50 to-orange-50 p-6 rounded-xl border border-red-100">
+                    <div className="flex items-start gap-4">
+                      <div className="bg-red-600 p-3 rounded-xl">
+                        <FileText className="w-8 h-8 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold text-gray-800 mb-2">Importar Laudo PDF com Inteligência Artificial</h3>
+                        <p className="text-gray-600 text-sm mb-4">
+                          Faça upload de laudos de manutenção em PDF. Nossa IA irá extrair automaticamente os dados dos extintores,
+                          incluindo número do cilindro, ano do teste hidrostático, tipo e marca. Os equipamentos serão atualizados
+                          ou criados automaticamente no sistema.
+                        </p>
+                        <ul className="text-sm text-gray-500 space-y-1 mb-4">
+                          <li className="flex items-center gap-2">
+                            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                            Extração automática via OCR com IA
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                            Atualização automática de extintores existentes
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                            Criação de novos registros quando necessário
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                            Geração automática de histórico e logs
+                          </li>
+                        </ul>
+                        <button
+                          onClick={() => setIsLaudoModalOpen(true)}
+                          className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
+                        >
+                          <FileText className="w-5 h-5" /> Abrir Importador de PDF
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                    <p className="text-sm text-blue-800">
+                      <strong>Dica:</strong> Para melhores resultados, utilize laudos em PDF com tabelas bem formatadas contendo 
+                      informações como número do cilindro, tipo do extintor, marca/fabricante e ano do teste hidrostático.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
@@ -909,6 +989,16 @@ export const AdminDashboard = ({
           </div>
         )}
       </main>
+
+      {isLaudoModalOpen && (
+        <LaudoPdfImporter
+          extinguishers={extinguishers}
+          onUpdate={onUpdate}
+          onAdd={onAdd}
+          onClose={() => setIsLaudoModalOpen(false)}
+          notify={notify}
+        />
+      )}
     </div>
   );
 };
