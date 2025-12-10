@@ -279,8 +279,8 @@ const Index = () => {
       {view === 'marista-dashboard' && currentUser?.role === 'marista' && (
         <MaristaDashboard
           user={currentUser}
-          extinguishers={extinguishers.filter(e => e.clientId === currentUser.id)}
-          hydrants={hydrants.filter(h => (h as any).clientId === currentUser.id)}
+          extinguishers={extinguishers}
+          hydrants={hydrants}
           onLogout={() => { setCurrentUser(null); setView('login'); }}
           notify={notify}
         />
