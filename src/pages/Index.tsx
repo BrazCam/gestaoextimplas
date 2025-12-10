@@ -7,9 +7,10 @@ import { AdminDashboard } from '@/components/AdminDashboard';
 import { InspectionMode } from '@/components/InspectionMode';
 import { ClientDashboard } from '@/components/ClientDashboard';
 import { QRCodeReader } from '@/components/QRCodeReader';
+import { MaristaDashboard } from '@/components/MaristaDashboard';
 import { User, Extinguisher, Alarm, Hydrant, Lighting, HistoryLog } from '@/types';
 
-type ViewType = 'login' | 'admin-dashboard' | 'inspection-mode' | 'client-dashboard' | 'public-scan';
+type ViewType = 'login' | 'admin-dashboard' | 'inspection-mode' | 'client-dashboard' | 'public-scan' | 'marista-dashboard';
 
 const Index = () => {
   const [view, setView] = useState<ViewType>('login');
@@ -206,6 +207,7 @@ const Index = () => {
     setCurrentUser(user);
     if (user.role === 'admin') setView('admin-dashboard');
     else if (user.role === 'tech') setView('inspection-mode');
+    else if (user.role === 'marista') setView('marista-dashboard');
     else setView('client-dashboard');
   };
 
@@ -269,6 +271,16 @@ const Index = () => {
           alarms={alarms}
           hydrants={hydrants}
           lighting={lighting}
+          onLogout={() => { setCurrentUser(null); setView('login'); }}
+          notify={notify}
+        />
+      )}
+
+      {view === 'marista-dashboard' && currentUser?.role === 'marista' && (
+        <MaristaDashboard
+          user={currentUser}
+          extinguishers={extinguishers.filter(e => e.clientId === currentUser.id)}
+          hydrants={hydrants.filter(h => (h as any).clientId === currentUser.id)}
           onLogout={() => { setCurrentUser(null); setView('login'); }}
           notify={notify}
         />
