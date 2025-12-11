@@ -21,14 +21,31 @@ export const QRCodeReader = ({ onBack, data, notify }: QRCodeReaderProps) => {
 
   const handleScan = (code: string) => {
     const searchTerm = code ? String(code).trim().toLowerCase() : '';
+    if (!searchTerm) {
+      notify("Código vazio.", "warning");
+      return;
+    }
+    
     const allItems = [...data.extinguishers, ...data.alarms, ...data.hydrants, ...data.lighting];
-    const found = allItems.find(i => i.id.toLowerCase() === searchTerm);
+    
+    // Busca flexível: por ID exato, ID parcial, número de cilindro, ou local
+    const found = allItems.find(i => {
+      const id = i.id?.toLowerCase() || '';
+      const numeroCilindro = (i as any).numeroCilindro?.toLowerCase() || '';
+      const local = ((i as any).localizacao || (i as any).local || '').toLowerCase();
+      
+      return id === searchTerm || 
+             id.includes(searchTerm) || 
+             searchTerm.includes(id) ||
+             numeroCilindro === searchTerm ||
+             numeroCilindro.includes(searchTerm);
+    });
 
     if (found) {
       setFoundItem(found);
       notify("Equipamento encontrado!", "success");
     } else {
-      notify(`Código ${code} não encontrado.`, "error");
+      notify(`Código "${code}" não encontrado. Verifique se o equipamento está cadastrado.`, "error");
     }
   };
 
