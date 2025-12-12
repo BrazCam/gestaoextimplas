@@ -1,11 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   ClipboardCheck, LogOut, Flame, Bell, Droplets, Lightbulb, ListFilter,
-  CheckSquare, ArrowLeft, QrCode, Search, MapPin, Edit3, CheckCircle, X
+  CheckSquare, ArrowLeft, QrCode, Search, MapPin, Edit3, CheckCircle, X, Camera, Trash2
 } from 'lucide-react';
 import { RealQRScanner } from './RealQRScanner';
 import { Extinguisher, Alarm, Hydrant, Lighting, HistoryLog } from '@/types';
-
+import { compressImage } from '@/utils/imageCompression';
 interface InspectionModeProps {
   extinguishers: Extinguisher[];
   alarms: Alarm[];
@@ -28,6 +28,8 @@ export const InspectionMode = ({
   const [checklist, setChecklist] = useState<any>({});
   const [selectedSede, setSelectedSede] = useState('Todas');
   const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { pendingList, inspectedList, allData } = useMemo(() => {
     const normalize = (list: any[], type: string) => list.map(i => ({ ...i, type, unifiedLocal: i.local || i.localizacao }));
@@ -113,8 +115,32 @@ export const InspectionMode = ({
     setScannedItem(item);
     setDetectedType(item.type);
     setStep('form');
+    setPhotos([]);
     if (item.type === 'extinguisher') setChecklist({ manometro: null, lacre: null, mangueira: null, sinalizacao: null, acesso: null, observacao: '' });
     else setChecklist({ item1: null, item2: null, observacao: '' });
+  };
+
+  const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || photos.length >= 3) return;
+
+    const remainingSlots = 3 - photos.length;
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+
+    for (const file of filesToProcess) {
+      try {
+        const compressed = await compressImage(file);
+        setPhotos(prev => [...prev, compressed].slice(0, 3));
+      } catch (error) {
+        notify('Erro ao processar foto.', 'error');
+      }
+    }
+    
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleFinishInspection = () => {
@@ -125,9 +151,13 @@ export const InspectionMode = ({
       descricao: hasFailure ? 'Vistoria - Irregularidade Detectada' : 'Vistoria - OK',
       tipo: 'vistoria',
       tecnico: 'Técnico de Campo',
-      details: checklist
+      details: {
+        ...checklist,
+        fotos: photos
+      }
     };
     onAddInspection(detectedType!, scannedItem.id, logEntry, finalStatus);
+    setPhotos([]);
     setStep('success');
   };
 
@@ -349,6 +379,51 @@ export const InspectionMode = ({
                   <ChecklistItem label="2. O acesso está livre?" field="item2" />
                 </>
               )}
+            </div>
+
+            {/* Seção de Fotos */}
+            <div className="bg-white p-5 rounded-xl border border-gray-200 mt-4 shadow-sm">
+              <label className="font-bold text-gray-800 mb-3 block flex items-center gap-2">
+                <Camera className="w-4 h-4" /> Fotos da Vistoria (máx. 3)
+              </label>
+              
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                multiple
+                ref={fileInputRef}
+                onChange={handlePhotoCapture}
+                className="hidden"
+              />
+
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                {photos.map((photo, index) => (
+                  <div key={index} className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200">
+                    <img src={photo} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => removePhoto(index)}
+                      className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full shadow-md hover:bg-red-700"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                
+                {photos.length < 3 && (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-blue-500 hover:text-blue-500 transition-colors bg-gray-50"
+                  >
+                    <Camera className="w-6 h-6 mb-1" />
+                    <span className="text-xs font-medium">Tirar Foto</span>
+                  </button>
+                )}
+              </div>
+              
+              <p className="text-xs text-gray-500 text-center">
+                {photos.length}/3 fotos adicionadas
+              </p>
             </div>
 
             <div className="bg-white p-5 rounded-xl border border-gray-200 mt-4 shadow-sm">
