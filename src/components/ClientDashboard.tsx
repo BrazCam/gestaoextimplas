@@ -116,16 +116,31 @@ export const ClientDashboard = ({
             if (vistorias.length > 0) lastVistoria = vistorias[vistorias.length - 1];
           }
           let description = 'Vencido / Irregular';
-          if (lastVistoria && lastVistoria.details && lastVistoria.details.observacao) {
-            description = lastVistoria.details.observacao;
-          } else if (item.obs) { description = item.obs; }
+          let observacao = '';
+          let fotos: string[] = [];
+          
+          if (lastVistoria && lastVistoria.details) {
+            if (lastVistoria.details.observacao) {
+              observacao = lastVistoria.details.observacao;
+              description = lastVistoria.details.observacao;
+            }
+            if (lastVistoria.details.fotos && Array.isArray(lastVistoria.details.fotos)) {
+              fotos = lastVistoria.details.fotos;
+            }
+          } else if (item.obs) { 
+            description = item.obs;
+            observacao = item.obs;
+          }
 
           list.push({
             system: typeName,
             id: item.id,
             local: item.local || item.localizacao,
             desc: description,
-            date: lastVistoria ? lastVistoria.data : new Date().toISOString()
+            observacao,
+            fotos,
+            date: lastVistoria ? lastVistoria.data : new Date().toISOString(),
+            tecnico: lastVistoria?.tecnico || 'N/A'
           });
         }
       });
@@ -157,15 +172,55 @@ export const ClientDashboard = ({
 
       {viewReport && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-slide-up">
-            <div className="bg-orange-600 text-white p-4 flex justify-between items-center">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-up max-h-[90vh] overflow-y-auto">
+            <div className="bg-orange-600 text-white p-4 flex justify-between items-center sticky top-0">
               <h3 className="font-bold text-lg flex items-center"><AlertTriangle className="w-5 h-5 mr-2" /> Detalhes da Ocorrência</h3>
               <button onClick={() => setViewReport(null)} className="hover:bg-white/20 p-1 rounded-full"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-6 space-y-4">
-              <div><span className="text-xs font-bold text-gray-400 uppercase">Equipamento</span><p className="font-bold text-gray-800 text-lg">{viewReport.system} - {viewReport.id}</p><p className="text-gray-500 text-sm">{viewReport.local}</p></div>
-              <div className="bg-gray-50 p-3 rounded border border-gray-100"><span className="text-xs font-bold text-gray-400 uppercase block mb-1">Data do Apontamento</span><p className="font-mono text-gray-700">{new Date(viewReport.date).toLocaleDateString('pt-BR')} às {new Date(viewReport.date).toLocaleTimeString('pt-BR')}</p></div>
-              <div><span className="text-xs font-bold text-gray-400 uppercase">Observação / Falha</span><div className="bg-red-50 text-red-800 p-3 rounded border border-red-100 mt-1 text-sm font-medium">{viewReport.desc}</div></div>
+              <div>
+                <span className="text-xs font-bold text-gray-400 uppercase">Equipamento</span>
+                <p className="font-bold text-gray-800 text-lg">{viewReport.system} - {viewReport.id}</p>
+                <p className="text-gray-500 text-sm">{viewReport.local}</p>
+              </div>
+              
+              <div className="bg-gray-50 p-3 rounded border border-gray-100">
+                <span className="text-xs font-bold text-gray-400 uppercase block mb-1">Data do Apontamento</span>
+                <p className="font-mono text-gray-700">{new Date(viewReport.date).toLocaleDateString('pt-BR')} às {new Date(viewReport.date).toLocaleTimeString('pt-BR')}</p>
+              </div>
+
+              <div className="bg-gray-50 p-3 rounded border border-gray-100">
+                <span className="text-xs font-bold text-gray-400 uppercase block mb-1">Técnico Responsável</span>
+                <p className="text-gray-700 font-medium">{viewReport.tecnico}</p>
+              </div>
+              
+              <div>
+                <span className="text-xs font-bold text-gray-400 uppercase">Observação / Falha</span>
+                <div className="bg-red-50 text-red-800 p-3 rounded border border-red-100 mt-1 text-sm font-medium">
+                  {viewReport.observacao || viewReport.desc || 'Sem observações registradas'}
+                </div>
+              </div>
+
+              {/* Seção de Fotos */}
+              {viewReport.fotos && viewReport.fotos.length > 0 && (
+                <div>
+                  <span className="text-xs font-bold text-gray-400 uppercase block mb-2">Fotos da Vistoria ({viewReport.fotos.length})</span>
+                  <div className="grid grid-cols-3 gap-2">
+                    {viewReport.fotos.map((foto: string, idx: number) => (
+                      <a 
+                        key={idx} 
+                        href={foto} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-500 transition-colors cursor-pointer"
+                      >
+                        <img src={foto} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <button onClick={() => setViewReport(null)} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 rounded-lg mt-2">Fechar</button>
             </div>
           </div>
