@@ -226,7 +226,7 @@ export const MaristaDashboard = ({ user, extinguishers, hydrants, onLogout, noti
             <p className="text-3xl font-bold text-green-600 mt-2">{stats.inCompliance}</p>
           </div>
           <div className="bg-white p-5 rounded-xl shadow-md border-b-4 border-yellow-500">
-            <p className="text-gray-500 text-sm font-medium">Vencem em 30 dias</p>
+            <p className="text-gray-500 text-sm font-medium">Vence Este Mês</p>
             <p className="text-3xl font-bold text-yellow-600 mt-2">{stats.maintenanceDue}</p>
           </div>
           <div className="bg-white p-5 rounded-xl shadow-md border-b-4 border-red-500">
