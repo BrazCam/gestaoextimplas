@@ -313,13 +313,13 @@ export const MaristaDashboard = ({ user, extinguishers, hydrants, onLogout, noti
       {/* Modal de Não Conformidade */}
       {showNonConformityModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden">
+          <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[85vh] overflow-hidden border-l-4 border-orange-500">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center bg-orange-50 justify-between">
               <div className="flex items-center">
                 <AlertOctagon className="w-6 h-6 text-orange-600 mr-3" />
                 <div>
-                  <h3 className="font-bold text-lg text-gray-800">Relatório de Não Conformidades</h3>
-                  <p className="text-sm text-orange-800">Consolidado dos equipamentos ({selectedSede})</p>
+                  <h3 className="font-bold text-lg text-gray-800">Relatório Unificado de Não Conformidades</h3>
+                  <p className="text-sm text-orange-800">Consolidado de todos os sistemas de segurança</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -349,10 +349,10 @@ export const MaristaDashboard = ({ user, extinguishers, hydrants, onLogout, noti
                     {nonConformityItems.map((item, idx) => (
                       <tr key={idx} className="hover:bg-orange-50/30">
                         <td className="px-6 py-4 font-bold text-gray-700">{item.system}</td>
-                        <td className="px-6 py-4 font-mono text-gray-600">{new Date(item.date).toLocaleDateString('pt-BR')}</td>
+                        <td className="px-6 py-4 text-gray-600">{new Date(item.date).toLocaleDateString('pt-BR')}</td>
                         <td className="px-6 py-4 font-bold text-gray-800">{item.id}</td>
                         <td className="px-6 py-4 text-gray-600">{item.local}</td>
-                        <td className="px-6 py-4"><span className="bg-red-100 text-red-800 px-2 py-1 rounded border border-red-200 font-medium">{item.desc}</span></td>
+                        <td className="px-6 py-4"><span className="bg-red-100 text-red-800 px-3 py-1 rounded text-sm font-medium">{item.desc}</span></td>
                         <td className="px-6 py-4 text-center">
                           <button onClick={() => setViewReport(item)} className="text-blue-600 hover:text-blue-800 p-2 hover:bg-blue-50 rounded-full transition-colors" title="Ver Detalhes">
                             <Eye className="w-5 h-5" />
