@@ -7,6 +7,8 @@ import {
   FileDown,
   Eye,
   AlertTriangle,
+  AlertOctagon,
+  CheckCircle,
   X,
 } from 'lucide-react';
 import {
@@ -38,6 +40,7 @@ export const MaristaDashboard = ({ user, extinguishers, hydrants, onLogout, noti
   const [selectedSede, setSelectedSede] = useState('Todas');
   const [modalItem, setModalItem] = useState<Extinguisher | Hydrant | null>(null);
   const [showNonConformityModal, setShowNonConformityModal] = useState(false);
+  const [viewReport, setViewReport] = useState<any>(null);
   const today = useMemo(() => new Date(), []);
   const thirtyDaysFromNow = useMemo(() => new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000), [today]);
 
@@ -183,31 +186,58 @@ export const MaristaDashboard = ({ user, extinguishers, hydrants, onLogout, noti
   // Non-conformity items (overdue or irregular)
   const nonConformityItems = useMemo(() => {
     const items: Array<{
+      system: string;
       id: string;
-      tipo: string;
       local: string;
-      status: string;
-      vencimento?: string;
-      observacao?: string;
-      fotos?: string[];
+      desc: string;
+      observacao: string;
+      fotos: string[];
+      date: string;
+      tecnico: string;
     }> = [];
 
-    [...filteredExtinguishers, ...filteredHydrants].forEach((item: any) => {
-      if (item.calculatedStatus === 'vencido' || item.status === 'irregular') {
-        const isExt = 'localizacao' in item;
-        const lastVistoria = item.historico?.find((h: any) => h.tipo === 'vistoria');
-        
-        items.push({
-          id: item.id,
-          tipo: item.tipo || 'N/A',
-          local: `${item.sede || ''} / ${isExt ? item.localizacao : item.local || ''}`,
-          status: item.calculatedStatus || item.status,
-          vencimento: isExt ? item.proximaManutencao : item.proximoTesteHidro,
-          observacao: lastVistoria?.details?.observacao,
-          fotos: lastVistoria?.details?.fotos,
-        });
-      }
-    });
+    const processItems = (itemList: any[], systemName: string, isExt: boolean) => {
+      itemList.forEach((item: any) => {
+        if (item.calculatedStatus === 'vencido' || item.status === 'irregular') {
+          let lastVistoria = null;
+          if (item.historico && item.historico.length > 0) {
+            const vistorias = item.historico.filter((h: any) => h.tipo === 'vistoria');
+            if (vistorias.length > 0) lastVistoria = vistorias[vistorias.length - 1];
+          }
+
+          let description = 'Vencido / Irregular';
+          let observacao = '';
+          let fotos: string[] = [];
+
+          if (lastVistoria && lastVistoria.details) {
+            if (lastVistoria.details.observacao) {
+              observacao = lastVistoria.details.observacao;
+              description = lastVistoria.details.observacao;
+            }
+            if (lastVistoria.details.fotos && Array.isArray(lastVistoria.details.fotos)) {
+              fotos = lastVistoria.details.fotos;
+            }
+          } else if (item.obs) {
+            description = item.obs;
+            observacao = item.obs;
+          }
+
+          items.push({
+            system: systemName,
+            id: item.id,
+            local: `${item.sede || ''} / ${isExt ? item.localizacao : item.local || ''}`,
+            desc: description,
+            observacao,
+            fotos,
+            date: lastVistoria ? lastVistoria.data : new Date().toISOString(),
+            tecnico: lastVistoria?.tecnico || 'N/A'
+          });
+        }
+      });
+    };
+
+    processItems(filteredExtinguishers, 'Extintor', true);
+    processItems(filteredHydrants, 'Mangueira', false);
 
     return items;
   }, [filteredExtinguishers, filteredHydrants]);
@@ -222,65 +252,124 @@ export const MaristaDashboard = ({ user, extinguishers, hydrants, onLogout, noti
         />
       )}
 
-      {/* Modal de Não Conformidade */}
-      {showNonConformityModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-red-50">
-              <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
-                Relatório de Não Conformidade ({nonConformityItems.length})
-              </h3>
-              <button onClick={() => setShowNonConformityModal(false)} className="text-gray-500 hover:text-gray-700">
-                <X className="w-5 h-5" />
-              </button>
+      {/* Modal de Detalhes da Ocorrência */}
+      {viewReport && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-up max-h-[90vh] overflow-y-auto">
+            <div className="bg-orange-600 text-white p-4 flex justify-between items-center sticky top-0">
+              <h3 className="font-bold text-lg flex items-center"><AlertTriangle className="w-5 h-5 mr-2" /> Detalhes da Ocorrência</h3>
+              <button onClick={() => setViewReport(null)} className="hover:bg-white/20 p-1 rounded-full"><X className="w-5 h-5" /></button>
             </div>
-            <div className="overflow-y-auto max-h-[60vh] p-4">
-              {nonConformityItems.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">Nenhuma não conformidade encontrada.</p>
-              ) : (
-                <div className="space-y-4">
-                  {nonConformityItems.map((item) => (
-                    <div key={item.id} className="bg-gray-50 rounded-lg p-4 border-l-4 border-red-500">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <span className="font-mono font-bold text-gray-800">{item.id}</span>
-                          <span className="text-sm text-gray-500 ml-2">- {item.tipo}</span>
-                        </div>
-                        <StatusBadge status={item.status} />
-                      </div>
-                      <p className="text-sm text-gray-600 mb-1"><strong>Local:</strong> {item.local}</p>
-                      {item.vencimento && (
-                        <p className="text-sm text-gray-600 mb-1">
-                          <strong>Vencimento:</strong> {new Date(item.vencimento).toLocaleDateString('pt-BR')}
-                        </p>
-                      )}
-                      {item.observacao && (
-                        <div className="mt-2 p-2 bg-yellow-50 rounded border border-yellow-200">
-                          <p className="text-sm text-gray-700"><strong>Observação:</strong> {item.observacao}</p>
-                        </div>
-                      )}
-                      {item.fotos && item.fotos.length > 0 && (
-                        <div className="mt-2">
-                          <p className="text-sm font-medium text-gray-700 mb-1">Fotos da Vistoria:</p>
-                          <div className="flex gap-2 flex-wrap">
-                            {item.fotos.map((foto, idx) => (
-                              <img
-                                key={idx}
-                                src={foto}
-                                alt={`Foto ${idx + 1}`}
-                                className="w-20 h-20 object-cover rounded border cursor-pointer hover:opacity-80"
-                                onClick={() => window.open(foto, '_blank')}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+            <div className="p-6 space-y-4">
+              <div>
+                <span className="text-xs font-bold text-gray-400 uppercase">Equipamento</span>
+                <p className="font-bold text-gray-800 text-lg">{viewReport.system} - {viewReport.id}</p>
+                <p className="text-gray-500 text-sm">{viewReport.local}</p>
+              </div>
+              
+              <div className="bg-gray-50 p-3 rounded border border-gray-100">
+                <span className="text-xs font-bold text-gray-400 uppercase block mb-1">Data do Apontamento</span>
+                <p className="font-mono text-gray-700">{new Date(viewReport.date).toLocaleDateString('pt-BR')} às {new Date(viewReport.date).toLocaleTimeString('pt-BR')}</p>
+              </div>
+
+              <div className="bg-gray-50 p-3 rounded border border-gray-100">
+                <span className="text-xs font-bold text-gray-400 uppercase block mb-1">Técnico Responsável</span>
+                <p className="text-gray-700 font-medium">{viewReport.tecnico}</p>
+              </div>
+              
+              <div>
+                <span className="text-xs font-bold text-gray-400 uppercase">Observação / Falha</span>
+                <div className="bg-red-50 text-red-800 p-3 rounded border border-red-100 mt-1 text-sm font-medium">
+                  {viewReport.observacao || viewReport.desc || 'Sem observações registradas'}
+                </div>
+              </div>
+
+              {/* Seção de Fotos */}
+              {viewReport.fotos && viewReport.fotos.length > 0 && (
+                <div>
+                  <span className="text-xs font-bold text-gray-400 uppercase block mb-2">Fotos da Vistoria ({viewReport.fotos.length})</span>
+                  <div className="grid grid-cols-3 gap-2">
+                    {viewReport.fotos.map((foto: string, idx: number) => (
+                      <a 
+                        key={idx} 
+                        href={foto} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-500 transition-colors cursor-pointer"
+                      >
+                        <img src={foto} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
+                      </a>
+                    ))}
+                  </div>
                 </div>
               )}
+
+              <button onClick={() => setViewReport(null)} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 rounded-lg mt-2">Fechar</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Não Conformidade */}
+      {showNonConformityModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center bg-orange-50 justify-between">
+              <div className="flex items-center">
+                <AlertOctagon className="w-6 h-6 text-orange-600 mr-3" />
+                <div>
+                  <h3 className="font-bold text-lg text-gray-800">Relatório de Não Conformidades</h3>
+                  <p className="text-sm text-orange-800">Consolidado dos equipamentos ({selectedSede})</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => window.print()} className="bg-white border border-orange-200 text-orange-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-orange-100 flex items-center gap-2">
+                  <FileDown className="w-4 h-4" /> Exportar PDF
+                </button>
+                <button onClick={() => setShowNonConformityModal(false)} className="text-gray-500 hover:text-gray-700 p-2">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            
+            {nonConformityItems.length > 0 ? (
+              <div className="overflow-x-auto max-h-[calc(85vh-80px)] overflow-y-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-gray-50 text-gray-500 font-medium sticky top-0">
+                    <tr>
+                      <th className="px-6 py-3">Sistema</th>
+                      <th className="px-6 py-3">Data Apontamento</th>
+                      <th className="px-6 py-3">ID</th>
+                      <th className="px-6 py-3">Localização</th>
+                      <th className="px-6 py-3">Descrição da Irregularidade</th>
+                      <th className="px-6 py-3 text-center">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {nonConformityItems.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-orange-50/30">
+                        <td className="px-6 py-4 font-bold text-gray-700">{item.system}</td>
+                        <td className="px-6 py-4 font-mono text-gray-600">{new Date(item.date).toLocaleDateString('pt-BR')}</td>
+                        <td className="px-6 py-4 font-bold text-gray-800">{item.id}</td>
+                        <td className="px-6 py-4 text-gray-600">{item.local}</td>
+                        <td className="px-6 py-4"><span className="bg-red-100 text-red-800 px-2 py-1 rounded border border-red-200 font-medium">{item.desc}</span></td>
+                        <td className="px-6 py-4 text-center">
+                          <button onClick={() => setViewReport(item)} className="text-blue-600 hover:text-blue-800 p-2 hover:bg-blue-50 rounded-full transition-colors" title="Ver Detalhes">
+                            <Eye className="w-5 h-5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <div className="bg-green-100 p-4 rounded-full mb-4"><CheckCircle className="w-12 h-12 text-green-600" /></div>
+                <h3 className="text-xl font-bold text-gray-800">Tudo em ordem!</h3>
+                <p className="text-gray-500">Nenhuma não conformidade pendente.</p>
+              </div>
+            )}
           </div>
         </div>
       )}
