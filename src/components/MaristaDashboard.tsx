@@ -6,6 +6,8 @@ import {
   ClipboardList,
   FileDown,
   Eye,
+  AlertTriangle,
+  X,
 } from 'lucide-react';
 import {
   BarChart,
@@ -35,6 +37,7 @@ interface MaristaDashboardProps {
 export const MaristaDashboard = ({ user, extinguishers, hydrants, onLogout, notify }: MaristaDashboardProps) => {
   const [selectedSede, setSelectedSede] = useState('Todas');
   const [modalItem, setModalItem] = useState<Extinguisher | Hydrant | null>(null);
+  const [showNonConformityModal, setShowNonConformityModal] = useState(false);
   const today = useMemo(() => new Date(), []);
   const thirtyDaysFromNow = useMemo(() => new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000), [today]);
 
@@ -177,6 +180,38 @@ export const MaristaDashboard = ({ user, extinguishers, hydrants, onLogout, noti
     return ['Todas', ...Array.from(allSedes).sort()];
   }, [extinguishers, hydrants]);
 
+  // Non-conformity items (overdue or irregular)
+  const nonConformityItems = useMemo(() => {
+    const items: Array<{
+      id: string;
+      tipo: string;
+      local: string;
+      status: string;
+      vencimento?: string;
+      observacao?: string;
+      fotos?: string[];
+    }> = [];
+
+    [...filteredExtinguishers, ...filteredHydrants].forEach((item: any) => {
+      if (item.calculatedStatus === 'vencido' || item.status === 'irregular') {
+        const isExt = 'localizacao' in item;
+        const lastVistoria = item.historico?.find((h: any) => h.tipo === 'vistoria');
+        
+        items.push({
+          id: item.id,
+          tipo: item.tipo || 'N/A',
+          local: `${item.sede || ''} / ${isExt ? item.localizacao : item.local || ''}`,
+          status: item.calculatedStatus || item.status,
+          vencimento: isExt ? item.proximaManutencao : item.proximoTesteHidro,
+          observacao: lastVistoria?.details?.observacao,
+          fotos: lastVistoria?.details?.fotos,
+        });
+      }
+    });
+
+    return items;
+  }, [filteredExtinguishers, filteredHydrants]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {modalItem && (
@@ -187,12 +222,88 @@ export const MaristaDashboard = ({ user, extinguishers, hydrants, onLogout, noti
         />
       )}
 
+      {/* Modal de Não Conformidade */}
+      {showNonConformityModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-red-50">
+              <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+                Relatório de Não Conformidade ({nonConformityItems.length})
+              </h3>
+              <button onClick={() => setShowNonConformityModal(false)} className="text-gray-500 hover:text-gray-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="overflow-y-auto max-h-[60vh] p-4">
+              {nonConformityItems.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">Nenhuma não conformidade encontrada.</p>
+              ) : (
+                <div className="space-y-4">
+                  {nonConformityItems.map((item) => (
+                    <div key={item.id} className="bg-gray-50 rounded-lg p-4 border-l-4 border-red-500">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <span className="font-mono font-bold text-gray-800">{item.id}</span>
+                          <span className="text-sm text-gray-500 ml-2">- {item.tipo}</span>
+                        </div>
+                        <StatusBadge status={item.status} />
+                      </div>
+                      <p className="text-sm text-gray-600 mb-1"><strong>Local:</strong> {item.local}</p>
+                      {item.vencimento && (
+                        <p className="text-sm text-gray-600 mb-1">
+                          <strong>Vencimento:</strong> {new Date(item.vencimento).toLocaleDateString('pt-BR')}
+                        </p>
+                      )}
+                      {item.observacao && (
+                        <div className="mt-2 p-2 bg-yellow-50 rounded border border-yellow-200">
+                          <p className="text-sm text-gray-700"><strong>Observação:</strong> {item.observacao}</p>
+                        </div>
+                      )}
+                      {item.fotos && item.fotos.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-sm font-medium text-gray-700 mb-1">Fotos da Vistoria:</p>
+                          <div className="flex gap-2 flex-wrap">
+                            {item.fotos.map((foto, idx) => (
+                              <img
+                                key={idx}
+                                src={foto}
+                                alt={`Foto ${idx + 1}`}
+                                className="w-20 h-20 object-cover rounded border cursor-pointer hover:opacity-80"
+                                onClick={() => window.open(foto, '_blank')}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <nav className="bg-white shadow-sm px-6 py-4 flex justify-between items-center sticky top-0 z-20">
-        <div className="flex items-center">
-          <div className="bg-red-600 p-3 rounded-lg mr-4 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="bg-red-600 p-3 rounded-lg mr-2 shadow-sm">
             <Flame className="text-white w-6 h-6" />
           </div>
           <h1 className="text-2xl font-black text-gray-800 uppercase tracking-tighter leading-none">Dashboard Marista</h1>
+          
+          <button
+            onClick={() => setShowNonConformityModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors border border-red-200"
+          >
+            <AlertTriangle className="w-4 h-4" />
+            <span className="text-sm font-medium">Relatórios</span>
+            {nonConformityItems.length > 0 && (
+              <span className="bg-red-600 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">
+                {nonConformityItems.length}
+              </span>
+            )}
+          </button>
         </div>
         <div className="flex items-center gap-4">
           <p className="text-sm font-medium text-gray-600 hidden sm:block">Olá, {user.name.split(' ')[0]}</p>
