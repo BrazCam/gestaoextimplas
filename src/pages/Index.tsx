@@ -8,9 +8,10 @@ import { InspectionMode } from '@/components/InspectionMode';
 import { ClientDashboard } from '@/components/ClientDashboard';
 import { QRCodeReader } from '@/components/QRCodeReader';
 import { MaristaDashboard } from '@/components/MaristaDashboard';
+import { RelocateMode } from '@/components/RelocateMode';
 import { User, Extinguisher, Alarm, Hydrant, Lighting, HistoryLog } from '@/types';
 
-type ViewType = 'login' | 'admin-dashboard' | 'inspection-mode' | 'client-dashboard' | 'public-scan' | 'marista-dashboard';
+type ViewType = 'login' | 'admin-dashboard' | 'inspection-mode' | 'client-dashboard' | 'public-scan' | 'marista-dashboard' | 'relocate-mode';
 
 const Index = () => {
   const [view, setView] = useState<ViewType>('login');
@@ -208,7 +209,30 @@ const Index = () => {
     if (user.role === 'admin') setView('admin-dashboard');
     else if (user.role === 'tech') setView('inspection-mode');
     else if (user.role === 'marista') setView('marista-dashboard');
+    else if (user.role === 'relocate') setView('relocate-mode');
     else setView('client-dashboard');
+  };
+
+  const handleRelocate = async (extinguisherId: string, newLocation: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    const ext = extinguishers.find(e => e.id === extinguisherId);
+    if (!ext) throw new Error('Extintor não encontrado');
+
+    const currentHistory = ext.historico || [];
+    const logEntry: HistoryLog = {
+      data: today,
+      descricao: `Realocado de "${ext.localizacao || 'Não definido'}" para "${newLocation}"`,
+      tipo: 'Realocação',
+      tecnico: currentUser?.name || 'Operador'
+    };
+
+    const { error } = await supabase.from('extinguishers').update({
+      localizacao: newLocation,
+      historico: [...currentHistory, logEntry] as any
+    }).eq('id', extinguisherId);
+
+    if (error) throw error;
+    await fetchData();
   };
 
   if (isLoading && view !== 'login') {
@@ -281,6 +305,15 @@ const Index = () => {
           user={currentUser}
           extinguishers={extinguishers}
           hydrants={hydrants}
+          onLogout={() => { setCurrentUser(null); setView('login'); }}
+          notify={notify}
+        />
+      )}
+
+      {view === 'relocate-mode' && currentUser?.role === 'relocate' && (
+        <RelocateMode
+          extinguishers={extinguishers}
+          onRelocate={handleRelocate}
           onLogout={() => { setCurrentUser(null); setView('login'); }}
           notify={notify}
         />
