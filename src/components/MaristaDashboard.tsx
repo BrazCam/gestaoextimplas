@@ -279,7 +279,7 @@ export const MaristaDashboard = ({ user, extinguishers, hydrants, onLogout, noti
               
               <div>
                 <span className="text-xs font-bold text-gray-400 uppercase">Observação / Falha</span>
-                <div className="bg-red-50 text-red-800 p-3 rounded border border-red-100 mt-1 text-sm font-medium">
+                <div className="bg-orange-500 text-white p-3 rounded mt-1 text-sm font-medium">
                   {viewReport.observacao || viewReport.desc || 'Sem observações registradas'}
                 </div>
               </div>
