@@ -10,6 +10,8 @@ import {
   AlertOctagon,
   CheckCircle,
   X,
+  Droplets,
+  Activity,
 } from 'lucide-react';
 import {
   BarChart,
@@ -41,6 +43,7 @@ export const MaristaDashboard = ({ user, extinguishers, hydrants, onLogout, noti
   const [modalItem, setModalItem] = useState<Extinguisher | Hydrant | null>(null);
   const [showNonConformityModal, setShowNonConformityModal] = useState(false);
   const [viewReport, setViewReport] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('stats');
   const today = useMemo(() => new Date(), []);
   const thirtyDaysFromNow = useMemo(() => new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000), [today]);
 
@@ -380,19 +383,6 @@ export const MaristaDashboard = ({ user, extinguishers, hydrants, onLogout, noti
             <Flame className="text-white w-6 h-6" />
           </div>
           <h1 className="text-2xl font-black text-gray-800 uppercase tracking-tighter leading-none">Dashboard Marista</h1>
-          
-          <button
-            onClick={() => setShowNonConformityModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors border border-red-200"
-          >
-            <AlertTriangle className="w-4 h-4" />
-            <span className="text-sm font-medium">Relatórios</span>
-            {nonConformityItems.length > 0 && (
-              <span className="bg-red-600 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">
-                {nonConformityItems.length}
-              </span>
-            )}
-          </button>
         </div>
         <div className="flex items-center gap-4">
           <p className="text-sm font-medium text-gray-600 hidden sm:block">Olá, {user.name.split(' ')[0]}</p>
@@ -415,141 +405,318 @@ export const MaristaDashboard = ({ user, extinguishers, hydrants, onLogout, noti
       
       <main className="max-w-7xl mx-auto p-6">
         
-        {/* Cards de Resumo */}
+        {/* Tabs de Navegação */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white p-5 rounded-xl shadow-md border-b-4 border-slate-300">
-            <p className="text-gray-500 text-sm font-medium">Total de Equipamentos</p>
-            <p className="text-3xl font-bold text-gray-800 mt-2">{stats.totalEquipments}</p>
-          </div>
-          <div className="bg-white p-5 rounded-xl shadow-md border-b-4 border-green-500">
-            <p className="text-gray-500 text-sm font-medium">Em Dia / OK</p>
-            <p className="text-3xl font-bold text-green-600 mt-2">{stats.inCompliance}</p>
-          </div>
-          <div className="bg-white p-5 rounded-xl shadow-md border-b-4 border-yellow-500">
-            <p className="text-gray-500 text-sm font-medium">Vence Este Mês</p>
-            <p className="text-3xl font-bold text-yellow-600 mt-2">{stats.maintenanceDue}</p>
-          </div>
-          <div className="bg-white p-5 rounded-xl shadow-md border-b-4 border-red-500">
-            <p className="text-gray-500 text-sm font-medium">Vencidos / Irregular</p>
-            <p className="text-3xl font-bold text-red-600 mt-2">{stats.totalOverdue}</p>
-          </div>
-        </div>
-
-        {/* Gráficos */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          
-          {/* Gráfico de Pizza */}
-          <div className="bg-white p-6 rounded-xl shadow-md lg:col-span-1 border border-gray-100">
-            <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center">
-              <Flame className="w-5 h-5 mr-2 text-red-600"/> Status Atual dos Extintores
-            </h3>
-            <div className="h-64 w-full relative">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={extPieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={3}
-                    dataKey="value"
-                    labelLine={false}
-                  >
-                    {extPieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value, name, props) => [`${value} itens`, props.payload.name]} />
-                  <Legend 
-                    verticalAlign="bottom" 
-                    height={36} 
-                    formatter={(value, entry: any) => (
-                      <span className="text-gray-600 text-sm">{entry.payload.name} ({entry.payload.value})</span>
-                    )} 
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-          
-          {/* Gráfico de Barras */}
-          <div className="bg-white p-6 rounded-xl shadow-md lg:col-span-2 border border-gray-100">
-            <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center">
-              <Calendar className="w-5 h-5 mr-2 text-blue-600"/> Cronograma Anual de Vencimentos
-            </h3>
-            <div className="h-72 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={scheduleBarData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#6b7280'}} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#6b7280'}} allowDecimals={false} />
-                  <Tooltip 
-                    cursor={{fill: '#f3f4f6'}} 
-                    contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} 
-                  />
-                  <Legend wrapperStyle={{paddingTop: '10px'}} />
-                  <Bar dataKey="Extintores" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={20} />
-                  <Bar dataKey="Mangueiras" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        {/* Inventário */}
-        <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
-          <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-            <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
-              <ClipboardList className="w-5 h-5 text-slate-600" /> Inventário de Equipamentos ({selectedSede})
-            </h3>
+          {[
+            { id: 'stats', icon: Activity, label: 'Estatísticas' },
+            { id: 'extinguishers', icon: Flame, label: 'Extintores' },
+            { id: 'hydrants', icon: Droplets, label: 'Mangueiras' },
+            { id: 'reports', icon: ClipboardList, label: 'Relatórios' }
+          ].map(tab => (
             <button 
-              onClick={() => window.print()} 
-              className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+              key={tab.id} 
+              onClick={() => setActiveTab(tab.id)} 
+              className={`flex flex-col items-center justify-center p-4 rounded-xl transition-all ${
+                activeTab === tab.id 
+                  ? 'bg-red-600 text-white shadow-lg' 
+                  : 'bg-white text-gray-500 hover:bg-gray-50'
+              }`}
             >
-              <FileDown className="w-4 h-4" /> Exportar Relatório
+              <tab.icon className="w-6 h-6 mb-2" />
+              <span className="text-xs font-bold text-center">{tab.label}</span>
+              {tab.id === 'reports' && nonConformityItems.length > 0 && (
+                <span className="mt-1 bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">
+                  {nonConformityItems.length}
+                </span>
+              )}
             </button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-gray-100 text-gray-600 font-bold uppercase text-xs">
-                <tr>
-                  <th className="px-4 py-3">ID / Tipo</th>
-                  <th className="px-4 py-3">Localização</th>
-                  <th className="px-4 py-3">Vencimento (Recarga/T.H.)</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-center">Ação</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {equipmentInventory.map(item => (
-                  <tr key={item.id} className="hover:bg-blue-50/50 transition-colors">
-                    <td className="px-4 py-3 font-mono font-bold text-gray-700">
-                      {item.id} - <span className="text-xs font-normal text-gray-500">{item.tipo}</span>
-                    </td>
-                    <td className="px-4 py-3">{item.local}</td>
-                    <td className="px-4 py-3 font-medium text-gray-800">
-                      {item.vencimento ? new Date(item.vencimento).toLocaleDateString('pt-BR') : 'N/A'}
-                      <span className="block text-xs text-gray-500">
-                        {item.isExtinguisher ? '(Recarga)' : '(T. Hidrostático)'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3"><StatusBadge status={item.status} /></td>
-                    <td className="px-4 py-3 text-center">
-                      <button 
-                        onClick={() => setModalItem(item.fullItem)} 
-                        className="text-blue-600 hover:text-blue-800 p-2 hover:bg-blue-50 rounded-full transition-colors flex items-center justify-center mx-auto" 
-                        title="Ver Detalhes"
-                      >
-                        <Eye className="w-5 h-5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          ))}
         </div>
+
+        {activeTab === 'stats' && (
+          <div className="animate-fade-in space-y-8">
+            {/* Cards de Resumo */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white p-5 rounded-xl shadow-md border-b-4 border-slate-300">
+                <p className="text-gray-500 text-sm font-medium">Total de Equipamentos</p>
+                <p className="text-3xl font-bold text-gray-800 mt-2">{stats.totalEquipments}</p>
+              </div>
+              <div className="bg-white p-5 rounded-xl shadow-md border-b-4 border-green-500">
+                <p className="text-gray-500 text-sm font-medium">Em Dia / OK</p>
+                <p className="text-3xl font-bold text-green-600 mt-2">{stats.inCompliance}</p>
+              </div>
+              <div className="bg-white p-5 rounded-xl shadow-md border-b-4 border-yellow-500">
+                <p className="text-gray-500 text-sm font-medium">Vence Este Mês</p>
+                <p className="text-3xl font-bold text-yellow-600 mt-2">{stats.maintenanceDue}</p>
+              </div>
+              <div className="bg-white p-5 rounded-xl shadow-md border-b-4 border-red-500">
+                <p className="text-gray-500 text-sm font-medium">Vencidos / Irregular</p>
+                <p className="text-3xl font-bold text-red-600 mt-2">{stats.totalOverdue}</p>
+              </div>
+            </div>
+
+            {/* Gráficos */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+              
+              {/* Gráfico de Pizza */}
+              <div className="bg-white p-6 rounded-xl shadow-md lg:col-span-1 border border-gray-100">
+                <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center">
+                  <Flame className="w-5 h-5 mr-2 text-red-600"/> Status Atual dos Extintores
+                </h3>
+                <div className="h-64 w-full relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={extPieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        paddingAngle={3}
+                        dataKey="value"
+                        labelLine={false}
+                      >
+                        {extPieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value, name, props) => [`${value} itens`, props.payload.name]} />
+                      <Legend 
+                        verticalAlign="bottom" 
+                        height={36} 
+                        formatter={(value, entry: any) => (
+                          <span className="text-gray-600 text-sm">{entry.payload.name} ({entry.payload.value})</span>
+                        )} 
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              
+              {/* Gráfico de Barras */}
+              <div className="bg-white p-6 rounded-xl shadow-md lg:col-span-2 border border-gray-100">
+                <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center">
+                  <Calendar className="w-5 h-5 mr-2 text-blue-600"/> Cronograma Anual de Vencimentos
+                </h3>
+                <div className="h-72 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={scheduleBarData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#6b7280'}} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{fill: '#6b7280'}} allowDecimals={false} />
+                      <Tooltip 
+                        cursor={{fill: '#f3f4f6'}} 
+                        contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} 
+                      />
+                      <Legend wrapperStyle={{paddingTop: '10px'}} />
+                      <Bar dataKey="Extintores" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={20} />
+                      <Bar dataKey="Mangueiras" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            {/* Inventário */}
+            <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                  <ClipboardList className="w-5 h-5 text-slate-600" /> Inventário de Equipamentos ({selectedSede})
+                </h3>
+                <button 
+                  onClick={() => window.print()} 
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+                >
+                  <FileDown className="w-4 h-4" /> Exportar Relatório
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-gray-100 text-gray-600 font-bold uppercase text-xs">
+                    <tr>
+                      <th className="px-4 py-3">ID / Tipo</th>
+                      <th className="px-4 py-3">Localização</th>
+                      <th className="px-4 py-3">Vencimento (Recarga/T.H.)</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3 text-center">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {equipmentInventory.map(item => (
+                      <tr key={item.id} className="hover:bg-blue-50/50 transition-colors">
+                        <td className="px-4 py-3 font-mono font-bold text-gray-700">
+                          {item.id} - <span className="text-xs font-normal text-gray-500">{item.tipo}</span>
+                        </td>
+                        <td className="px-4 py-3">{item.local}</td>
+                        <td className="px-4 py-3 font-medium text-gray-800">
+                          {item.vencimento ? new Date(item.vencimento).toLocaleDateString('pt-BR') : 'N/A'}
+                          <span className="block text-xs text-gray-500">
+                            {item.isExtinguisher ? '(Recarga)' : '(T. Hidrostático)'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3"><StatusBadge status={item.status} /></td>
+                        <td className="px-4 py-3 text-center">
+                          <button 
+                            onClick={() => setModalItem(item.fullItem)} 
+                            className="text-blue-600 hover:text-blue-800 p-2 hover:bg-blue-50 rounded-full transition-colors flex items-center justify-center mx-auto" 
+                            title="Ver Detalhes"
+                          >
+                            <Eye className="w-5 h-5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'extinguishers' && (
+          <div className="animate-fade-in">
+            <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-red-600" /> Extintores ({selectedSede})
+                </h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-gray-100 text-gray-600 font-bold uppercase text-xs">
+                    <tr>
+                      <th className="px-4 py-3">ID</th>
+                      <th className="px-4 py-3">Localização</th>
+                      <th className="px-4 py-3">Tipo</th>
+                      <th className="px-4 py-3">Próx. Manutenção</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3 text-center">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredExtinguishers.map(item => (
+                      <tr key={item.id} className="hover:bg-blue-50/50 transition-colors">
+                        <td className="px-4 py-3 font-bold text-gray-700">{item.id}</td>
+                        <td className="px-4 py-3">{item.localizacao}</td>
+                        <td className="px-4 py-3 text-gray-500">{item.tipo}</td>
+                        <td className="px-4 py-3 font-medium text-gray-800">
+                          {item.proximaManutencao ? new Date(item.proximaManutencao).toLocaleDateString('pt-BR') : 'N/A'}
+                        </td>
+                        <td className="px-4 py-3"><StatusBadge status={item.status} /></td>
+                        <td className="px-4 py-3 text-center">
+                          <button onClick={() => setModalItem(item)} className="text-blue-600 hover:text-blue-800 p-2 hover:bg-blue-50 rounded-full transition-colors">
+                            <Eye className="w-5 h-5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'hydrants' && (
+          <div className="animate-fade-in">
+            <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                  <Droplets className="w-5 h-5 text-blue-600" /> Mangueiras ({selectedSede})
+                </h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-gray-100 text-gray-600 font-bold uppercase text-xs">
+                    <tr>
+                      <th className="px-4 py-3">ID</th>
+                      <th className="px-4 py-3">Local</th>
+                      <th className="px-4 py-3">Tipo</th>
+                      <th className="px-4 py-3">Próx. Teste Hidro</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3 text-center">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredHydrants.map(item => (
+                      <tr key={item.id} className="hover:bg-blue-50/50 transition-colors">
+                        <td className="px-4 py-3 font-bold text-gray-700">{item.id}</td>
+                        <td className="px-4 py-3">{item.local}</td>
+                        <td className="px-4 py-3 text-gray-500">{item.tipo}</td>
+                        <td className="px-4 py-3 font-medium text-gray-800">
+                          {item.proximoTesteHidro ? new Date(item.proximoTesteHidro).toLocaleDateString('pt-BR') : 'N/A'}
+                        </td>
+                        <td className="px-4 py-3"><StatusBadge status={item.status} /></td>
+                        <td className="px-4 py-3 text-center">
+                          <button onClick={() => setModalItem(item)} className="text-blue-600 hover:text-blue-800 p-2 hover:bg-blue-50 rounded-full transition-colors">
+                            <Eye className="w-5 h-5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'reports' && (
+          <div className="animate-fade-in">
+            <div className="bg-white rounded-xl shadow-sm border-l-4 border-orange-500 overflow-hidden min-h-[400px]">
+              <div className="px-6 py-4 border-b border-gray-100 flex items-center bg-orange-50 justify-between">
+                <div className="flex items-center">
+                  <AlertOctagon className="w-6 h-6 text-orange-600 mr-3" />
+                  <div>
+                    <h3 className="font-bold text-lg text-gray-800">Relatório Unificado de Não Conformidades</h3>
+                    <p className="text-sm text-orange-800">Consolidado de todos os sistemas de segurança</p>
+                  </div>
+                </div>
+                <button onClick={() => window.print()} className="bg-white border border-orange-200 text-orange-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-orange-100 flex items-center gap-2">
+                  <FileDown className="w-4 h-4" /> Exportar PDF
+                </button>
+              </div>
+              {nonConformityItems.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-gray-50 text-gray-500 font-medium">
+                      <tr>
+                        <th className="px-6 py-3">Sistema</th>
+                        <th className="px-6 py-3">Data Apontamento</th>
+                        <th className="px-6 py-3">ID</th>
+                        <th className="px-6 py-3">Localização</th>
+                        <th className="px-6 py-3">Descrição da Irregularidade</th>
+                        <th className="px-6 py-3 text-center">Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {nonConformityItems.map((item, idx) => (
+                        <tr key={idx} className="hover:bg-orange-50/30">
+                          <td className="px-6 py-4 font-bold text-gray-700">{item.system}</td>
+                          <td className="px-6 py-4 text-gray-600">{new Date(item.date).toLocaleDateString('pt-BR')}</td>
+                          <td className="px-6 py-4 font-bold text-gray-800">{item.id}</td>
+                          <td className="px-6 py-4 text-gray-600">{item.local}</td>
+                          <td className="px-6 py-4"><span className="bg-red-100 text-red-800 px-3 py-1 rounded text-sm font-medium">{item.desc}</span></td>
+                          <td className="px-6 py-4 text-center">
+                            <button onClick={() => setViewReport(item)} className="text-blue-600 hover:text-blue-800 p-2 hover:bg-blue-50 rounded-full transition-colors" title="Ver Detalhes">
+                              <Eye className="w-5 h-5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-64 text-center">
+                  <div className="bg-green-100 p-4 rounded-full mb-4"><CheckCircle className="w-12 h-12 text-green-600" /></div>
+                  <h3 className="text-xl font-bold text-gray-800">Tudo em ordem!</h3>
+                  <p className="text-gray-500">Nenhuma não conformidade pendente em nenhum sistema.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
