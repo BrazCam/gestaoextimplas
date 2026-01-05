@@ -9,7 +9,7 @@ import { ClientDashboard } from '@/components/ClientDashboard';
 import { QRCodeReader } from '@/components/QRCodeReader';
 import { MaristaDashboard } from '@/components/MaristaDashboard';
 import { RelocateMode } from '@/components/RelocateMode';
-import { User, Extinguisher, Alarm, Hydrant, Lighting, HistoryLog } from '@/types';
+import { User, Extinguisher, Alarm, Hydrant, Lighting, HistoryLog, Location } from '@/types';
 
 type ViewType = 'login' | 'admin-dashboard' | 'inspection-mode' | 'client-dashboard' | 'public-scan' | 'marista-dashboard' | 'relocate-mode';
 
@@ -19,6 +19,7 @@ const Index = () => {
   const [alarms, setAlarms] = useState<Alarm[]>([]);
   const [hydrants, setHydrants] = useState<Hydrant[]>([]);
   const [lighting, setLighting] = useState<Lighting[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' | 'info' | 'warning' } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,17 +31,19 @@ const Index = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [extRes, alarmsRes, hydRes, lightRes] = await Promise.all([
+      const [extRes, alarmsRes, hydRes, lightRes, locRes] = await Promise.all([
         supabase.from('extinguishers').select('*'),
         supabase.from('alarms').select('*'),
         supabase.from('hydrants').select('*'),
-        supabase.from('lighting').select('*')
+        supabase.from('lighting').select('*'),
+        supabase.from('locations').select('*')
       ]);
 
       if (extRes.data) setExtinguishers(extRes.data as unknown as Extinguisher[]);
       if (alarmsRes.data) setAlarms(alarmsRes.data as unknown as Alarm[]);
       if (hydRes.data) setHydrants(hydRes.data as unknown as Hydrant[]);
       if (lightRes.data) setLighting(lightRes.data as unknown as Lighting[]);
+      if (locRes.data) setLocations(locRes.data as unknown as Location[]);
     } catch (error) {
       console.error('Erro ao buscar dados:', error);
     } finally {
@@ -213,7 +216,7 @@ const Index = () => {
     else setView('client-dashboard');
   };
 
-  const handleRelocate = async (extinguisherId: string, newLocation: string) => {
+  const handleRelocate = async (type: string, extinguisherId: string, targetLocation: Location) => {
     const today = new Date().toISOString().split('T')[0];
     const ext = extinguishers.find(e => e.id === extinguisherId);
     if (!ext) throw new Error('Extintor não encontrado');
@@ -221,13 +224,14 @@ const Index = () => {
     const currentHistory = ext.historico || [];
     const logEntry: HistoryLog = {
       data: today,
-      descricao: `Realocado de "${ext.localizacao || 'Não definido'}" para "${newLocation}"`,
+      descricao: `Realocado de "${ext.localizacao || 'Não definido'}" para "${targetLocation.nome}" (${targetLocation.id})`,
       tipo: 'Realocação',
       tecnico: currentUser?.name || 'Operador'
     };
 
     const { error } = await supabase.from('extinguishers').update({
-      localizacao: newLocation,
+      localizacao: targetLocation.nome,
+      locationId: targetLocation.id,
       historico: [...currentHistory, logEntry] as any
     }).eq('id', extinguisherId);
 
@@ -312,6 +316,7 @@ const Index = () => {
 
       {view === 'relocate-mode' && currentUser?.role === 'relocate' && (
         <RelocateMode
+          locations={locations}
           extinguishers={extinguishers}
           onRelocate={handleRelocate}
           onLogout={() => { setCurrentUser(null); setView('login'); }}

@@ -1,249 +1,216 @@
 import { useState } from 'react';
-import { ArrowLeft, MapPin, Package, CheckCircle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, MapPin, Package, CheckCircle, RefreshCw, LogOut, Search, QrCode, X, ScanLine } from 'lucide-react';
 import { RealQRScanner } from '@/components/RealQRScanner';
-import { Extinguisher } from '@/types';
+import { Extinguisher, Location } from '@/types';
 
 interface RelocateModeProps {
+  locations: Location[];
   extinguishers: Extinguisher[];
-  onRelocate: (extinguisherId: string, newLocation: string) => Promise<void>;
+  onRelocate: (type: string, extinguisherId: string, targetLocation: Location) => Promise<void>;
   onLogout: () => void;
   notify: (message: string, type?: 'error' | 'success' | 'info' | 'warning') => void;
 }
 
-type Step = 'menu' | 'scan-location' | 'scan-extinguisher' | 'confirm';
+type Step = 'start' | 'scan-loc' | 'scan-item' | 'success';
 
-export const RelocateMode = ({ extinguishers, onRelocate, onLogout, notify }: RelocateModeProps) => {
-  const [step, setStep] = useState<Step>('menu');
-  const [scannedLocation, setScannedLocation] = useState<string>('');
-  const [scannedExtinguisher, setScannedExtinguisher] = useState<Extinguisher | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+export const RelocateMode = ({ locations, extinguishers, onRelocate, onLogout, notify }: RelocateModeProps) => {
+  const [step, setStep] = useState<Step>('start');
+  const [targetLocation, setTargetLocation] = useState<Location | null>(null);
+  const [movedItem, setMovedItem] = useState<Extinguisher | null>(null);
+  const [manualCode, setManualCode] = useState('');
 
-  const handleLocationScan = (code: string) => {
-    setScannedLocation(code);
-    notify(`Local identificado: ${code}`, 'success');
-    setStep('scan-extinguisher');
-  };
-
-  const handleExtinguisherScan = (code: string) => {
-    const ext = extinguishers.find(
-      e => e.id === code || 
-           e.id.includes(code) || 
-           e.numeroCilindro === code ||
-           code.includes(e.id)
+  const handleScanLocation = (code: string) => {
+    const scanCode = code ? String(code).trim() : '';
+    const loc = locations.find(l => 
+      l.id === scanCode || 
+      l.id.toLowerCase() === scanCode.toLowerCase() ||
+      l.nome.toLowerCase() === scanCode.toLowerCase()
     );
-
-    if (ext) {
-      setScannedExtinguisher(ext);
-      notify(`Extintor ${ext.id} identificado!`, 'success');
-      setStep('confirm');
+    
+    if (loc) {
+      setTargetLocation(loc);
+      setStep('scan-item');
+      setManualCode('');
+      notify(`Local identificado: ${loc.nome}`, 'success');
     } else {
-      notify('Extintor não encontrado no sistema.', 'error');
+      notify(`Local não encontrado para o código: ${scanCode}`, 'error');
     }
   };
 
-  const handleConfirmRelocate = async () => {
-    if (!scannedExtinguisher || !scannedLocation) return;
-
-    setIsProcessing(true);
-    try {
-      await onRelocate(scannedExtinguisher.id, scannedLocation);
-      notify(`Extintor ${scannedExtinguisher.id} realocado para ${scannedLocation}!`, 'success');
-      // Reset for next relocation
-      setScannedLocation('');
-      setScannedExtinguisher(null);
-      setStep('menu');
-    } catch (error) {
-      notify('Erro ao realocar extintor.', 'error');
-    } finally {
-      setIsProcessing(false);
+  const handleScanItem = (code: string) => {
+    const scanCode = code ? String(code).trim() : '';
+    const ext = extinguishers.find(e => 
+      e.id.toLowerCase() === scanCode.toLowerCase() || 
+      (e.codigoBarras && e.codigoBarras === scanCode) ||
+      (e.numeroCilindro && e.numeroCilindro === scanCode)
+    );
+    
+    if (ext && targetLocation) {
+      onRelocate('extinguishers', ext.id, targetLocation);
+      setMovedItem(ext);
+      setStep('success');
+      notify('Equipamento vinculado com sucesso!', 'success');
+    } else {
+      notify(`Extintor não encontrado para o código: ${scanCode}`, 'error');
     }
   };
 
   const resetProcess = () => {
-    setScannedLocation('');
-    setScannedExtinguisher(null);
-    setStep('menu');
+    setStep('start');
+    setTargetLocation(null);
+    setMovedItem(null);
+    setManualCode('');
   };
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-purple-700 to-purple-900 text-white p-4 flex items-center justify-between shadow-lg">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={step === 'menu' ? onLogout : resetProcess}
-            className="p-2 hover:bg-white/20 rounded-full transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-xl font-bold">Modo Realocação</h1>
-            <p className="text-purple-200 text-sm">Realocar extintores para novos locais</p>
-          </div>
-        </div>
+    <div className="min-h-screen bg-slate-100 flex flex-col">
+      <div className="bg-purple-800 text-white p-4 flex justify-between items-center shadow-md relative z-10">
+        <h2 className="font-bold flex items-center gap-2"><RefreshCw className="w-5 h-5" /> Realocação de Ativos</h2>
+        <button onClick={onLogout}><LogOut className="w-5 h-5 opacity-80 hover:text-red-300 transition-colors"/></button>
       </div>
 
-      <div className="p-4 max-w-lg mx-auto">
-        {/* Menu inicial */}
-        {step === 'menu' && (
-          <div className="mt-8 space-y-6">
-            <div className="text-center mb-8">
-              <div className="w-24 h-24 bg-purple-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <RefreshCw className="w-12 h-12 text-purple-400" />
-              </div>
-              <h2 className="text-2xl font-bold text-white mb-2">Realocar Extintor</h2>
-              <p className="text-gray-400">Escaneie primeiro o local de destino, depois o extintor</p>
+      <div className="flex-1 flex flex-col p-4 max-w-md mx-auto w-full">
+        
+        {step === 'start' && (
+          <div className="flex flex-col items-center justify-center flex-1 space-y-6 animate-fade-in">
+            <div className="w-24 h-24 bg-purple-600/20 rounded-full flex items-center justify-center mb-4">
+              <RefreshCw className="w-12 h-12 text-purple-600" />
             </div>
-
-            <button
-              onClick={() => setStep('scan-location')}
-              className="w-full py-6 px-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-bold rounded-xl shadow-lg transition-all transform hover:scale-[1.02] flex items-center justify-center gap-3"
+            <h2 className="text-2xl font-bold text-gray-800 text-center">Modo Realocação</h2>
+            <p className="text-gray-500 text-center text-sm">Vincule equipamentos a novos locais escaneando os QR Codes.</p>
+            <button 
+              onClick={() => setStep('scan-loc')} 
+              className="w-full py-4 bg-purple-600 text-white rounded-xl font-bold shadow-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
             >
-              <MapPin className="w-6 h-6" />
-              <span className="text-lg">Iniciar Realocação</span>
+              <QrCode className="w-5 h-5"/> Iniciar Realocação
             </button>
-
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-              <h3 className="text-white font-semibold mb-3">Como funciona:</h3>
-              <ol className="space-y-2 text-gray-300 text-sm">
-                <li className="flex items-start gap-2">
-                  <span className="bg-purple-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0">1</span>
-                  <span>Escaneie o QR Code do <strong>local de destino</strong></span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="bg-purple-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0">2</span>
-                  <span>Escaneie o QR Code do <strong>extintor</strong></span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="bg-purple-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0">3</span>
-                  <span>Confirme a realocação</span>
-                </li>
+            <div className="bg-white rounded-xl p-4 border border-gray-200 text-sm text-gray-600 w-full">
+              <h3 className="font-bold mb-2 text-gray-700">Fluxo:</h3>
+              <ol className="space-y-1 list-decimal list-inside">
+                <li>Escaneie o <strong>QR Code do Local</strong> de destino.</li>
+                <li>Escaneie o <strong>QR Code / Código de Barras do Extintor</strong>.</li>
+                <li>Confirme a realocação.</li>
               </ol>
             </div>
           </div>
         )}
 
-        {/* Scan Location */}
-        {step === 'scan-location' && (
-          <div className="mt-4">
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center gap-2 bg-purple-600/20 text-purple-300 px-4 py-2 rounded-full mb-4">
-                <MapPin className="w-4 h-4" />
-                <span className="font-medium">Passo 1: Escanear Local</span>
+        {step === 'scan-loc' && (
+          <div className="flex-1 flex flex-col space-y-4 animate-fade-in pt-4">
+            <div className="text-center">
+              <span className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold uppercase">
+                <MapPin className="w-3 h-3"/> Passo 1: Escanear Local de Destino
+              </span>
+            </div>
+
+            <div className="bg-black rounded-xl border-4 border-purple-500 relative overflow-hidden flex items-center justify-center flex-grow min-h-[300px]">
+              <RealQRScanner onScanSuccess={handleScanLocation} />
+            </div>
+
+            <p className="text-center text-gray-500 text-xs">Aponte para o QR Code do <strong>local fixo</strong> (parede, pilar).</p>
+
+            <div className="border-t pt-4">
+              <p className="text-xs font-bold text-gray-400 uppercase mb-2 text-center">Ou digite o ID manualmente:</p>
+              <div className="flex gap-2">
+                <input 
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" 
+                  placeholder="Ex: LOC-001"
+                  value={manualCode}
+                  onChange={(e) => setManualCode(e.target.value)}
+                />
+                <button 
+                  onClick={() => handleScanLocation(manualCode)} 
+                  className="bg-slate-800 text-white px-4 py-2 rounded-lg font-bold"
+                >
+                  <Search className="w-5 h-5"/>
+                </button>
               </div>
-              <p className="text-gray-400">Aponte a câmera para o QR Code do local de destino</p>
             </div>
 
-            <div className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
-              <RealQRScanner onScanSuccess={handleLocationScan} />
-            </div>
-
-            <button
-              onClick={resetProcess}
-              className="w-full mt-4 py-3 px-4 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+            <button 
+              onClick={resetProcess} 
+              className="w-full py-3 bg-gray-200 text-gray-600 rounded-lg font-bold mt-4"
             >
               Cancelar
             </button>
           </div>
         )}
 
-        {/* Scan Extinguisher */}
-        {step === 'scan-extinguisher' && (
-          <div className="mt-4">
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center gap-2 bg-green-600/20 text-green-300 px-4 py-2 rounded-full mb-4">
-                <Package className="w-4 h-4" />
-                <span className="font-medium">Passo 2: Escanear Extintor</span>
+        {step === 'scan-item' && (
+          <div className="flex-1 flex flex-col space-y-4 animate-fade-in pt-4">
+            <div className="text-center">
+              <span className="inline-flex items-center gap-2 bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold uppercase">
+                <Package className="w-3 h-3"/> Passo 2: Escanear Extintor
+              </span>
+            </div>
+            
+            <div className="bg-purple-100 text-purple-800 p-3 rounded-lg flex items-center gap-2 text-sm font-medium">
+              <CheckCircle className="w-5 h-5 text-green-600"/>
+              <span>Destino: <strong>{targetLocation?.nome}</strong> ({targetLocation?.setor || targetLocation?.id})</span>
+            </div>
+
+            <div className="bg-black rounded-xl border-4 border-green-500 relative overflow-hidden flex items-center justify-center flex-grow min-h-[300px]">
+              <RealQRScanner onScanSuccess={handleScanItem} />
+            </div>
+
+            <p className="text-center text-gray-500 text-xs">
+              Aponte para o <strong>QR Code</strong> ou <strong>Código de Barras</strong> do <strong>extintor</strong>.
+            </p>
+
+            <div className="border-t pt-4">
+              <p className="text-xs font-bold text-gray-400 uppercase mb-2 text-center">Ou digite o Nº Cilindro / ID:</p>
+              <div className="flex gap-2">
+                <input 
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" 
+                  placeholder="Ex: EXT-001 ou CIL-283940"
+                  value={manualCode}
+                  onChange={(e) => setManualCode(e.target.value)}
+                />
+                <button 
+                  onClick={() => handleScanItem(manualCode)} 
+                  className="bg-slate-800 text-white px-4 py-2 rounded-lg font-bold"
+                >
+                  <Search className="w-5 h-5"/>
+                </button>
               </div>
-              <p className="text-gray-400">Aponte a câmera para o QR Code do extintor</p>
             </div>
 
-            <div className="bg-slate-800 rounded-xl p-3 mb-4 border border-green-600/30">
-              <p className="text-sm text-gray-400">Local de destino:</p>
-              <p className="text-white font-semibold flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-green-400" />
-                {scannedLocation}
-              </p>
-            </div>
-
-            <div className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
-              <RealQRScanner onScanSuccess={handleExtinguisherScan} />
-            </div>
-
-            <button
-              onClick={resetProcess}
-              className="w-full mt-4 py-3 px-4 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+            <button 
+              onClick={resetProcess} 
+              className="w-full py-3 bg-gray-200 text-gray-600 rounded-lg font-bold mt-4"
             >
               Cancelar
             </button>
           </div>
         )}
 
-        {/* Confirm */}
-        {step === 'confirm' && scannedExtinguisher && (
-          <div className="mt-4">
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center gap-2 bg-blue-600/20 text-blue-300 px-4 py-2 rounded-full mb-4">
-                <CheckCircle className="w-4 h-4" />
-                <span className="font-medium">Passo 3: Confirmar Realocação</span>
+        {step === 'success' && movedItem && (
+          <div className="flex-1 flex flex-col items-center justify-center space-y-6 animate-fade-in">
+            <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center shadow-lg animate-bounce">
+              <CheckCircle className="w-14 h-14 text-white" />
+            </div>
+            
+            <h2 className="text-2xl font-bold text-gray-800">Realocação Concluída!</h2>
+            
+            <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 w-full text-center">
+              <p className="text-gray-500 text-sm">Extintor</p>
+              <p className="text-3xl font-black text-gray-800">{movedItem.id}</p>
+              {movedItem.numeroCilindro && (
+                <p className="text-xs text-gray-400 font-mono mt-1">Cilindro: {movedItem.numeroCilindro}</p>
+              )}
+              <div className="flex items-center justify-center gap-2 text-lg text-green-700 font-semibold mt-4 border-t pt-4">
+                <MapPin className="w-5 h-5" />
+                <span>{targetLocation?.nome}</span>
               </div>
+              <p className="text-xs text-gray-400 mt-1">{targetLocation?.setor} - {targetLocation?.sede}</p>
             </div>
 
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 space-y-4">
-              {/* Local destino */}
-              <div className="bg-green-600/10 rounded-lg p-3 border border-green-600/30">
-                <p className="text-sm text-gray-400 mb-1">Novo Local</p>
-                <p className="text-white font-semibold flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-green-400" />
-                  {scannedLocation}
-                </p>
-              </div>
-
-              {/* Extintor */}
-              <div className="bg-purple-600/10 rounded-lg p-3 border border-purple-600/30">
-                <p className="text-sm text-gray-400 mb-2">Extintor a ser realocado</p>
-                <div className="space-y-1">
-                  <p className="text-white font-semibold flex items-center gap-2">
-                    <Package className="w-5 h-5 text-purple-400" />
-                    {scannedExtinguisher.id}
-                  </p>
-                  <div className="text-sm text-gray-300 space-y-1 ml-7">
-                    <p><span className="text-gray-500">Tipo:</span> {scannedExtinguisher.tipo}</p>
-                    <p><span className="text-gray-500">Capacidade:</span> {scannedExtinguisher.capacidade}</p>
-                    <p><span className="text-gray-500">Nº Cilindro:</span> {scannedExtinguisher.numeroCilindro || '-'}</p>
-                    <p><span className="text-gray-500">Local atual:</span> {scannedExtinguisher.localizacao || 'Não definido'}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-3">
-              <button
-                onClick={handleConfirmRelocate}
-                disabled={isProcessing}
-                className="w-full py-4 px-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:opacity-50 text-white font-bold rounded-xl shadow-lg transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
-              >
-                {isProcessing ? (
-                  <>
-                    <RefreshCw className="w-5 h-5 animate-spin" />
-                    <span>Processando...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="w-5 h-5" />
-                    <span>Confirmar Realocação</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                onClick={resetProcess}
-                disabled={isProcessing}
-                className="w-full py-3 px-4 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white rounded-lg transition-colors"
-              >
-                Cancelar
-              </button>
-            </div>
+            <button 
+              onClick={resetProcess} 
+              className="w-full py-4 bg-purple-600 text-white rounded-xl font-bold shadow-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+            >
+              <ScanLine className="w-5 h-5"/> Realocar Outro Equipamento
+            </button>
           </div>
         )}
       </div>

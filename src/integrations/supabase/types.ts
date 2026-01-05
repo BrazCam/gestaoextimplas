@@ -22,6 +22,7 @@ export type Database = {
           historico: Json | null
           id: string
           local: string | null
+          locationId: string | null
           marca: string | null
           obs: string | null
           proximaVistoria: string | null
@@ -38,6 +39,7 @@ export type Database = {
           historico?: Json | null
           id: string
           local?: string | null
+          locationId?: string | null
           marca?: string | null
           obs?: string | null
           proximaVistoria?: string | null
@@ -54,6 +56,7 @@ export type Database = {
           historico?: Json | null
           id?: string
           local?: string | null
+          locationId?: string | null
           marca?: string | null
           obs?: string | null
           proximaVistoria?: string | null
@@ -69,12 +72,14 @@ export type Database = {
         Row: {
           capacidade: string | null
           clientId: string | null
+          codigoBarras: string | null
           created_at: string | null
           fabricacao: string | null
           fotoLocal: string | null
           historico: Json | null
           id: string
           localizacao: string | null
+          locationId: string | null
           marca: string | null
           numeroCilindro: string | null
           proximaManutencao: string | null
@@ -89,12 +94,14 @@ export type Database = {
         Insert: {
           capacidade?: string | null
           clientId?: string | null
+          codigoBarras?: string | null
           created_at?: string | null
           fabricacao?: string | null
           fotoLocal?: string | null
           historico?: Json | null
           id: string
           localizacao?: string | null
+          locationId?: string | null
           marca?: string | null
           numeroCilindro?: string | null
           proximaManutencao?: string | null
@@ -109,12 +116,14 @@ export type Database = {
         Update: {
           capacidade?: string | null
           clientId?: string | null
+          codigoBarras?: string | null
           created_at?: string | null
           fabricacao?: string | null
           fotoLocal?: string | null
           historico?: Json | null
           id?: string
           localizacao?: string | null
+          locationId?: string | null
           marca?: string | null
           numeroCilindro?: string | null
           proximaManutencao?: string | null
@@ -138,6 +147,7 @@ export type Database = {
           historico: Json | null
           id: string
           local: string | null
+          locationId: string | null
           polegada: string | null
           proximaVistoria: string | null
           proximoTesteHidro: string | null
@@ -156,6 +166,7 @@ export type Database = {
           historico?: Json | null
           id: string
           local?: string | null
+          locationId?: string | null
           polegada?: string | null
           proximaVistoria?: string | null
           proximoTesteHidro?: string | null
@@ -174,6 +185,7 @@ export type Database = {
           historico?: Json | null
           id?: string
           local?: string | null
+          locationId?: string | null
           polegada?: string | null
           proximaVistoria?: string | null
           proximoTesteHidro?: string | null
@@ -195,6 +207,7 @@ export type Database = {
           historico: Json | null
           id: string
           local: string | null
+          locationId: string | null
           proximaVistoria: string | null
           sede: string | null
           status: string | null
@@ -211,6 +224,7 @@ export type Database = {
           historico?: Json | null
           id: string
           local?: string | null
+          locationId?: string | null
           proximaVistoria?: string | null
           sede?: string | null
           status?: string | null
@@ -227,12 +241,37 @@ export type Database = {
           historico?: Json | null
           id?: string
           local?: string | null
+          locationId?: string | null
           proximaVistoria?: string | null
           sede?: string | null
           status?: string | null
           teste?: string | null
           tipo?: string | null
           ultimaVistoria?: string | null
+        }
+        Relationships: []
+      }
+      locations: {
+        Row: {
+          created_at: string | null
+          id: string
+          nome: string
+          sede: string | null
+          setor: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          nome: string
+          sede?: string | null
+          setor?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          nome?: string
+          sede?: string | null
+          setor?: string | null
         }
         Relationships: []
       }
