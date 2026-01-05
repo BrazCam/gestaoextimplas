@@ -15,15 +15,24 @@ export interface HistoryLog {
   details?: any;
 }
 
+export interface Location {
+  id: string;
+  nome: string;
+  setor?: string;
+  sede?: string;
+}
+
 export interface Extinguisher {
   id: string;
   sede?: string;
   localizacao?: string;
+  locationId?: string;
   tipo?: string;
   capacidade?: string;
   marca?: string;
   fabricacao?: string;
   numeroCilindro?: string;
+  codigoBarras?: string;
   ultimaManutencao?: string;
   proximaManutencao?: string;
   testeHidrostatico?: string;
