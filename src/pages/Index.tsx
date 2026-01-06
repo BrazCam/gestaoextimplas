@@ -9,9 +9,18 @@ import { ClientDashboard } from '@/components/ClientDashboard';
 import { QRCodeReader } from '@/components/QRCodeReader';
 import { MaristaDashboard } from '@/components/MaristaDashboard';
 import { RelocateMode } from '@/components/RelocateMode';
+import { CorporateDashboard } from '@/components/CorporateDashboard';
+import { SafetyBot } from '@/components/SafetyBot';
 import { User, Extinguisher, Alarm, Hydrant, Lighting, HistoryLog, Location } from '@/types';
 
-type ViewType = 'login' | 'admin-dashboard' | 'inspection-mode' | 'client-dashboard' | 'public-scan' | 'marista-dashboard' | 'relocate-mode';
+interface FloorPlan {
+  id: string;
+  name: string;
+  sede: string;
+  image: string;
+}
+
+type ViewType = 'login' | 'admin-dashboard' | 'inspection-mode' | 'client-dashboard' | 'public-scan' | 'marista-dashboard' | 'relocate-mode' | 'corporate-dashboard';
 
 const Index = () => {
   const [view, setView] = useState<ViewType>('login');
@@ -20,6 +29,9 @@ const Index = () => {
   const [hydrants, setHydrants] = useState<Hydrant[]>([]);
   const [lighting, setLighting] = useState<Lighting[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([
+    { id: 'PLAN-001', name: 'Planta Térreo - Bloco A', sede: 'Matriz', image: 'https://img.freepik.com/vetores-gratis/plantas-arquitetonicas-planas_23-2147640323.jpg' }
+  ]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' | 'info' | 'warning' } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -211,9 +223,54 @@ const Index = () => {
     setCurrentUser(user);
     if (user.role === 'admin') setView('admin-dashboard');
     else if (user.role === 'tech') setView('inspection-mode');
-    else if (user.role === 'marista') setView('marista-dashboard');
+    else if (user.role === 'marista') setView('corporate-dashboard');
     else if (user.role === 'relocate') setView('relocate-mode');
     else setView('client-dashboard');
+  };
+
+  const handleAddFloorPlan = (plan: FloorPlan) => {
+    setFloorPlans(prev => [...prev, plan]);
+    notify("Planta adicionada com sucesso!", "success");
+  };
+
+  const handleDeleteFloorPlan = (id: string) => {
+    setFloorPlans(prev => prev.filter(p => p.id !== id));
+    notify("Planta removida!", "success");
+  };
+
+  const handleUpdateFloorPlan = (plan: FloorPlan) => {
+    setFloorPlans(prev => prev.map(p => p.id === plan.id ? plan : p));
+    notify("Planta atualizada!", "success");
+  };
+
+  const handleAddLocation = async (location: Location) => {
+    const { error } = await supabase.from('locations').insert([location] as any);
+    if (error) {
+      notify("Erro ao adicionar local: " + error.message, "error");
+    } else {
+      notify("Local adicionado com sucesso!", "success");
+      fetchData();
+    }
+  };
+
+  const handleUpdateLocation = async (id: string, location: Location) => {
+    const { error } = await supabase.from('locations').update(location as any).eq('id', id);
+    if (error) {
+      notify("Erro ao atualizar local: " + error.message, "error");
+    } else {
+      notify("Local atualizado com sucesso!", "success");
+      fetchData();
+    }
+  };
+
+  const handleDeleteLocation = async (id: string) => {
+    const { error } = await supabase.from('locations').delete().eq('id', id);
+    if (error) {
+      notify("Erro ao remover local: " + error.message, "error");
+    } else {
+      notify("Local removido!", "success");
+      fetchData();
+    }
   };
 
   const handleRelocate = async (type: string, extinguisherId: string, targetLocation: Location) => {
@@ -272,9 +329,17 @@ const Index = () => {
           alarms={alarms}
           hydrants={hydrants}
           lighting={lighting}
+          locations={locations}
+          floorPlans={floorPlans}
           onUpdate={handleUpdate}
           onAdd={handleAdd}
           onDelete={handleDelete}
+          onAddLocation={handleAddLocation}
+          onUpdateLocation={handleUpdateLocation}
+          onDeleteLocation={handleDeleteLocation}
+          onAddFloorPlan={handleAddFloorPlan}
+          onDeleteFloorPlan={handleDeleteFloorPlan}
+          onUpdateFloorPlan={handleUpdateFloorPlan}
           onLogout={() => { setCurrentUser(null); setView('login'); }}
           notify={notify}
         />
@@ -304,13 +369,14 @@ const Index = () => {
         />
       )}
 
-      {view === 'marista-dashboard' && currentUser?.role === 'marista' && (
-        <MaristaDashboard
-          user={currentUser}
+      {view === 'corporate-dashboard' && currentUser?.role === 'marista' && (
+        <CorporateDashboard
           extinguishers={extinguishers}
           hydrants={hydrants}
+          alarms={alarms}
+          lighting={lighting}
+          floorPlans={floorPlans}
           onLogout={() => { setCurrentUser(null); setView('login'); }}
-          notify={notify}
         />
       )}
 
@@ -331,6 +397,9 @@ const Index = () => {
           notify={notify}
         />
       )}
+
+      {/* SafetyBot - Visible on all views except login and public-scan */}
+      {view !== 'login' && view !== 'public-scan' && <SafetyBot />}
     </div>
   );
 };
