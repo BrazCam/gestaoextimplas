@@ -8,24 +8,44 @@ import {
 import { StatusBadge } from './StatusBadge';
 import { RealQRScanner } from './RealQRScanner';
 import { LaudoPdfImporter } from './LaudoPdfImporter';
+import { LaudoExtractorModal } from './LaudoExtractorModal';
+import { FloorPlanEditor } from './FloorPlanEditor';
 import { compressImage } from '@/utils/imageCompression';
-import { Extinguisher, Alarm, Hydrant, Lighting } from '@/types';
+import { Extinguisher, Alarm, Hydrant, Lighting, Location } from '@/types';
+
+interface FloorPlan {
+  id: string;
+  name: string;
+  sede: string;
+  image: string;
+}
 
 interface AdminDashboardProps {
   extinguishers: Extinguisher[];
   alarms: Alarm[];
   hydrants: Hydrant[];
   lighting: Lighting[];
+  locations: Location[];
+  floorPlans: FloorPlan[];
   onUpdate: (type: string, id: string, item: any) => void;
   onAdd: (type: string, item: any) => void;
   onDelete: (type: string, id: string) => void;
+  onAddLocation: (location: Location) => void;
+  onUpdateLocation: (id: string, location: Location) => void;
+  onDeleteLocation: (id: string) => void;
+  onAddFloorPlan: (plan: FloorPlan) => void;
+  onDeleteFloorPlan: (id: string) => void;
+  onUpdateFloorPlan: (plan: FloorPlan) => void;
   onLogout: () => void;
   notify: (message: string, type?: 'error' | 'success' | 'info' | 'warning') => void;
 }
 
 export const AdminDashboard = ({
-  extinguishers, alarms, hydrants, lighting,
-  onUpdate, onAdd, onDelete, onLogout, notify
+  extinguishers, alarms, hydrants, lighting, locations, floorPlans,
+  onUpdate, onAdd, onDelete, 
+  onAddLocation, onUpdateLocation, onDeleteLocation,
+  onAddFloorPlan, onDeleteFloorPlan, onUpdateFloorPlan,
+  onLogout, notify
 }: AdminDashboardProps) => {
   const [activeTab, setActiveTab] = useState('extinguishers');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -46,6 +66,8 @@ export const AdminDashboard = ({
   const [feedSubTab, setFeedSubTab] = useState<'manual' | 'pdf'>('manual');
   const [isLaudoModalOpen, setIsLaudoModalOpen] = useState(false);
 
+  const [showMapEditor, setShowMapEditor] = useState(false);
+
   const uniqueSedes = useMemo(() => {
     const allItems = [...extinguishers, ...alarms, ...hydrants, ...lighting];
     const sedes = new Set(allItems.map(i => i.sede).filter(Boolean));
@@ -58,10 +80,13 @@ export const AdminDashboard = ({
       case 'alarm': data = alarms; break;
       case 'hydrant': data = hydrants; break;
       case 'lighting': data = lighting; break;
+      case 'locations': data = locations; break;
+      case 'floorPlans': data = floorPlans; break;
       default: data = extinguishers;
     }
+    if (activeTab === 'locations' || activeTab === 'floorPlans') return data;
     return selectedSede === 'Todas' ? data : data.filter(i => i.sede === selectedSede);
-  }, [activeTab, extinguishers, alarms, hydrants, lighting, selectedSede]);
+  }, [activeTab, extinguishers, alarms, hydrants, lighting, locations, floorPlans, selectedSede]);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -242,6 +267,8 @@ export const AdminDashboard = ({
     else if (activeTab === 'alarm') { prefix = 'AL-'; list = alarms; }
     else if (activeTab === 'hydrant') { prefix = 'MANG-'; list = hydrants; }
     else if (activeTab === 'lighting') { prefix = 'LUZ-'; list = lighting; }
+    else if (activeTab === 'locations') { prefix = 'LOC-'; list = locations; }
+    else if (activeTab === 'floorPlans') { prefix = 'PLAN-'; list = floorPlans; }
 
     const numbers = list.map(item => {
       const match = item.id.match(/(\d+)$/);
@@ -290,6 +317,14 @@ export const AdminDashboard = ({
         anoFabricacao: '', autonomia: '2h', bateria: 'ok', status: 'ok',
         fotoLocal: null
       });
+    } else if (activeTab === 'locations') {
+      setFormData({
+        id: nextId, nome: '', setor: '', sede: 'Matriz'
+      });
+    } else if (activeTab === 'floorPlans') {
+      setFormData({
+        id: nextId, name: '', sede: 'Matriz', image: null
+      });
     }
     setIsModalOpen(true);
   };
@@ -308,6 +343,36 @@ export const AdminDashboard = ({
   };
 
   const handleSave = () => {
+    // Handle FloorPlans separately
+    if (activeTab === 'floorPlans') {
+      if (!formData.name || !formData.image) {
+        notify("Nome e Imagem são obrigatórios.", "error");
+        return;
+      }
+      if (editingId) {
+        onUpdateFloorPlan(formData);
+      } else {
+        onAddFloorPlan(formData);
+      }
+      setIsModalOpen(false);
+      return;
+    }
+
+    // Handle Locations separately
+    if (activeTab === 'locations') {
+      if (!formData.id || !formData.nome) {
+        notify("Preencha ID e Nome do Local.", "error");
+        return;
+      }
+      if (editingId) {
+        onUpdateLocation(editingId, formData);
+      } else {
+        onAddLocation(formData);
+      }
+      setIsModalOpen(false);
+      return;
+    }
+
     if (!formData.id || (!formData.local && !formData.localizacao)) {
       notify("Preencha os campos obrigatórios (ID e Local).", "error");
       return;
@@ -318,22 +383,26 @@ export const AdminDashboard = ({
     // Define allowed fields per table type to avoid sending wrong columns
     const allowedFields: Record<string, string[]> = {
       extinguishers: [
-        'id', 'sede', 'localizacao', 'tipo', 'capacidade', 'marca', 'fabricacao',
-        'numeroCilindro', 'ultimaManutencao', 'proximaManutencao', 'testeHidrostatico',
-        'ultimaVistoria', 'proximaVistoria', 'status', 'clientId', 'fotoLocal', 'historico'
+        'id', 'sede', 'localizacao', 'locationId', 'tipo', 'capacidade', 'marca', 'fabricacao',
+        'numeroCilindro', 'codigoBarras', 'ultimaManutencao', 'proximaManutencao', 'testeHidrostatico',
+        'ultimaVistoria', 'proximaVistoria', 'status', 'clientId', 'fotoLocal', 'historico',
+        'floorPlanId', 'coordX', 'coordY'
       ],
       alarm: [
-        'id', 'sede', 'local', 'tipo', 'marca', 'anoFabricacao', 'status',
-        'ultimoTeste', 'ultimaVistoria', 'proximaVistoria', 'obs', 'fotoLocal', 'historico'
+        'id', 'sede', 'local', 'locationId', 'tipo', 'marca', 'anoFabricacao', 'status',
+        'ultimoTeste', 'ultimaVistoria', 'proximaVistoria', 'obs', 'fotoLocal', 'historico',
+        'floorPlanId', 'coordX', 'coordY'
       ],
       hydrant: [
-        'id', 'sede', 'local', 'fabricante', 'anoFabricacao', 'polegada', 'tipo',
+        'id', 'sede', 'local', 'locationId', 'fabricante', 'anoFabricacao', 'polegada', 'tipo',
         'comprimento', 'ultimoTesteHidro', 'proximoTesteHidro', 'ultimaVistoria',
-        'proximaVistoria', 'status', 'fotoLocal', 'historico'
+        'proximaVistoria', 'status', 'fotoLocal', 'historico',
+        'floorPlanId', 'coordX', 'coordY'
       ],
       lighting: [
-        'id', 'sede', 'local', 'tipo', 'anoFabricacao', 'autonomia', 'bateria',
-        'status', 'ultimaVistoria', 'proximaVistoria', 'teste', 'fotoLocal', 'historico'
+        'id', 'sede', 'local', 'locationId', 'tipo', 'anoFabricacao', 'autonomia', 'bateria',
+        'status', 'ultimaVistoria', 'proximaVistoria', 'teste', 'fotoLocal', 'historico',
+        'floorPlanId', 'coordX', 'coordY'
       ]
     };
 
@@ -390,6 +459,19 @@ export const AdminDashboard = ({
     setIsModalOpen(false);
   };
 
+  const handleFloorPlanImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const compressedBase64 = await compressImage(file);
+        setFormData((prev: any) => ({ ...prev, image: compressedBase64 }));
+        notify("Imagem da planta carregada!", "success");
+      } catch (error) {
+        notify("Erro ao processar imagem.", "error");
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 relative">
       {isProcessingAI && (
@@ -409,7 +491,14 @@ export const AdminDashboard = ({
             <div className="bg-slate-800 text-white p-6 flex justify-between items-center">
               <h2 className="text-xl font-bold flex items-center gap-2">
                 {editingId ? <Edit3 className="w-6 h-6" /> : <PackagePlus className="w-6 h-6" />}
-                {editingId ? 'Editar' : 'Adicionar'} {activeTab === 'extinguishers' ? 'Extintor' : activeTab === 'alarm' ? 'Alarme' : activeTab === 'hydrant' ? 'Mangueira' : 'Iluminação'}
+                {editingId ? 'Editar' : 'Adicionar'} {
+                  activeTab === 'extinguishers' ? 'Extintor' : 
+                  activeTab === 'alarm' ? 'Alarme' : 
+                  activeTab === 'hydrant' ? 'Mangueira' : 
+                  activeTab === 'lighting' ? 'Iluminação' :
+                  activeTab === 'locations' ? 'Local' :
+                  activeTab === 'floorPlans' ? 'Planta' : 'Item'
+                }
               </h2>
               <button onClick={() => setIsModalOpen(false)} className="hover:bg-white/20 p-1 rounded-full">
                 <X className="w-5 h-5" />
@@ -661,6 +750,58 @@ export const AdminDashboard = ({
                 </div>
               )}
 
+              {activeTab === 'locations' && (
+                <div className="space-y-4 mt-2">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome do Local</label>
+                    <input className="w-full border p-2 rounded" value={formData.nome || ''} onChange={e => setFormData({ ...formData, nome: e.target.value })} placeholder="Ex: Corredor Principal" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Setor</label>
+                      <input className="w-full border p-2 rounded" value={formData.setor || ''} onChange={e => setFormData({ ...formData, setor: e.target.value })} placeholder="Ex: Bloco A" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Sede</label>
+                      <input className="w-full border p-2 rounded" value={formData.sede || ''} onChange={e => setFormData({ ...formData, sede: e.target.value })} placeholder="Ex: Matriz" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'floorPlans' && (
+                <div className="space-y-4 mt-2">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome da Planta</label>
+                    <input className="w-full border p-2 rounded" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Ex: Térreo - Bloco A" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Sede</label>
+                    <input className="w-full border p-2 rounded" value={formData.sede || ''} onChange={e => setFormData({ ...formData, sede: e.target.value })} placeholder="Ex: Matriz" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Imagem da Planta</label>
+                    {formData.image ? (
+                      <div className="relative w-full h-48">
+                        <img src={formData.image} alt="Planta" className="w-full h-full object-contain rounded-lg border" />
+                        <button
+                          onClick={(e) => { e.preventDefault(); setFormData({ ...formData, image: null }); }}
+                          className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full hover:bg-red-700"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 bg-gray-50 rounded-lg p-6 cursor-pointer hover:bg-gray-100">
+                        <ImageIcon className="w-10 h-10 text-gray-400 mb-2" />
+                        <span className="text-sm text-gray-500">Clique para carregar imagem</span>
+                        <input type="file" accept="image/*" className="hidden" onChange={handleFloorPlanImageUpload} />
+                      </label>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <button onClick={handleSave} className="w-full bg-green-600 text-white py-3 rounded-lg font-bold shadow-md hover:bg-green-700 mt-4 flex justify-center items-center gap-2">
                 <Save className="w-5 h-5" /> {editingId ? 'Salvar Alterações' : 'Adicionar ao Sistema'}
               </button>
@@ -762,20 +903,22 @@ export const AdminDashboard = ({
           </div>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-8">
           {[
             { id: 'extinguishers', icon: Flame, label: 'Extintores' },
             { id: 'alarm', icon: Bell, label: 'Alarme' },
             { id: 'hydrant', icon: Droplets, label: 'Mangueiras' },
             { id: 'lighting', icon: Lightbulb, label: 'Iluminação' },
+            { id: 'locations', icon: Building2, label: 'Locais' },
+            { id: 'floorPlans', icon: ImageIcon, label: 'Plantas' },
             { id: 'feeding', icon: Zap, label: 'Alimentação', highlight: true }
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => { setActiveTab(tab.id); setFeedItem(null); }}
-              className={`flex items-center justify-center p-3 rounded-lg border font-bold transition-all ${activeTab === tab.id ? ((tab as any).highlight ? 'bg-orange-600 text-white border-orange-600' : 'bg-slate-800 text-white border-slate-800') : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}
+              className={`flex items-center justify-center p-3 rounded-lg border font-bold transition-all text-xs ${activeTab === tab.id ? ((tab as any).highlight ? 'bg-orange-600 text-white border-orange-600' : 'bg-slate-800 text-white border-slate-800') : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}
             >
-              <tab.icon className="w-5 h-5 mr-2" /> {tab.label}
+              <tab.icon className="w-4 h-4 mr-1" /> {tab.label}
             </button>
           ))}
         </div>
