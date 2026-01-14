@@ -443,10 +443,17 @@ export const CorporateDashboard = ({
               <div className="h-64 flex items-center justify-center text-gray-400">
                 <div className="text-center">
                   <MapIcon className="w-16 h-16 mx-auto mb-4 opacity-30" />
-                  <p>Nenhuma planta cadastrada</p>
+                  <p>Nenhuma planta selecionada ou cadastrada.</p>
                 </div>
               </div>
             )}
+
+            {/* Map Legend */}
+            <div className="flex justify-center gap-4 mt-4 text-xs">
+              <div className="flex items-center gap-1"><div className="w-3 h-3 bg-green-500 rounded-full" /> Em Dia</div>
+              <div className="flex items-center gap-1"><div className="w-3 h-3 bg-orange-500 rounded-full" /> Vence em breve (30d)</div>
+              <div className="flex items-center gap-1"><div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" /> Vencido / Irregular</div>
+            </div>
           </div>
         </div>
       )}
