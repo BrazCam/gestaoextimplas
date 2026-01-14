@@ -110,9 +110,9 @@ export interface Lighting {
 }
 
 export const MOCK_USERS: User[] = [
-  { id: 'cli_001', name: 'Grupo Marista', email: 'cliente@demo.com', password: '123', role: 'client' },
+  { id: 'cli_001', name: 'Gestao Extimplas', email: 'cliente@demo.com', password: '123', role: 'client' },
   { id: 'admin_001', name: 'Gestor Master', email: 'admin@demo.com', password: '123', role: 'admin' },
   { id: 'tec_001', name: 'Técnico de Campo', email: 'tec@demo.com', password: '123', role: 'tech' },
-  { id: 'marista_001', name: 'Grupo Marista (Dashboard)', email: 'marista@grupo.com', password: '123', role: 'marista' },
+  { id: 'marista_001', name: 'Gestao Extimplas (Dashboard)', email: 'Gestao@extimplas.com', password: '123', role: 'marista' },
   { id: 'relo_001', name: 'Operador Realocação', email: 'relo@extimplas.com', password: '123', role: 'relocate' }
 ];

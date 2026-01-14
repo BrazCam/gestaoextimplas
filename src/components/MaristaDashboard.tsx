@@ -379,7 +379,7 @@ export const MaristaDashboard = ({ user, extinguishers, hydrants, onLogout, noti
           <div className="bg-red-600 p-3 rounded-lg mr-2 shadow-sm">
             <Flame className="text-white w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-black text-gray-800 uppercase tracking-tighter leading-none">Dashboard Marista</h1>
+          <h1 className="text-2xl font-black text-gray-800 uppercase tracking-tighter leading-none">Dashboard Gestao Extimplas</h1>
           
           <button
             onClick={() => setShowNonConformityModal(true)}

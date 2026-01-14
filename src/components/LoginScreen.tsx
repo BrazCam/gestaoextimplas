@@ -50,7 +50,7 @@ export const LoginScreen = ({ onLogin, onScanMode, notify }: LoginScreenProps) =
             <ShieldCheck className="text-white w-10 h-10" />
           </div>
           <p className="text-red-200 text-sm font-bold tracking-[0.2em] uppercase mb-1">Sistema Extimplas</p>
-          <h1 className="text-4xl font-black text-white leading-tight">GRUPO<br />MARISTA</h1>
+          <h1 className="text-4xl font-black text-white leading-tight">GESTAO<br />EXTIMPLAS</h1>
         </div>
 
         <div className="p-8">
