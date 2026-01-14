@@ -238,7 +238,7 @@ export const CorporateDashboard = ({
             <Activity className="w-6 h-6 text-purple-600" />
             <div>
               <h1 className="font-bold text-gray-800">Dashboard Corporativo</h1>
-              <p className="text-xs text-gray-500">Grupo Marista - Visão Geral</p>
+              <p className="text-xs text-gray-500">Gestao Extimplas - Visão Geral</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
