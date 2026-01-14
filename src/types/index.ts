@@ -42,12 +42,16 @@ export interface Extinguisher {
   clientId?: string;
   historico?: HistoryLog[];
   fotoLocal?: string;
+  floorPlanId?: string;
+  coordX?: number;
+  coordY?: number;
 }
 
 export interface Alarm {
   id: string;
   sede?: string;
   local?: string;
+  locationId?: string;
   tipo?: string;
   marca?: string;
   anoFabricacao?: string;
@@ -58,12 +62,16 @@ export interface Alarm {
   fotoLocal?: string;
   ultimaVistoria?: string;
   proximaVistoria?: string;
+  floorPlanId?: string;
+  coordX?: number;
+  coordY?: number;
 }
 
 export interface Hydrant {
   id: string;
   sede?: string;
   local?: string;
+  locationId?: string;
   fabricante?: string;
   anoFabricacao?: string;
   polegada?: string;
@@ -76,12 +84,16 @@ export interface Hydrant {
   status: string;
   historico?: HistoryLog[];
   fotoLocal?: string;
+  floorPlanId?: string;
+  coordX?: number;
+  coordY?: number;
 }
 
 export interface Lighting {
   id: string;
   sede?: string;
   local?: string;
+  locationId?: string;
   tipo?: string;
   anoFabricacao?: string;
   autonomia?: string;
@@ -92,6 +104,9 @@ export interface Lighting {
   fotoLocal?: string;
   ultimaVistoria?: string;
   proximaVistoria?: string;
+  floorPlanId?: string;
+  coordX?: number;
+  coordY?: number;
 }
 
 export const MOCK_USERS: User[] = [

@@ -3,7 +3,8 @@ import {
   Settings, LogOut, Flame, Bell, Droplets, Lightbulb, Zap, Filter,
   PlusCircle, Edit3, Trash2, X, Save, PackagePlus, Building2, Camera,
   Image as ImageIcon, FileDown, FileSpreadsheet, FileUp, Cpu, QrCode,
-  SearchCode, RefreshCcw, ClipboardCheck, Search, FileText
+  SearchCode, RefreshCcw, ClipboardCheck, Search, FileText, MapPin,
+  Map as MapIcon, MousePointer2, ArrowLeft, CheckCircle
 } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { RealQRScanner } from './RealQRScanner';
@@ -67,6 +68,36 @@ export const AdminDashboard = ({
   const [isLaudoModalOpen, setIsLaudoModalOpen] = useState(false);
 
   const [showMapEditor, setShowMapEditor] = useState(false);
+  const [mapEditorMode, setMapEditorMode] = useState(false);
+  const [selectedMapForEdit, setSelectedMapForEdit] = useState(floorPlans[0]?.id || '');
+  const [selectedItemForPlacement, setSelectedItemForPlacement] = useState<any>(null);
+  const mapImageRef = useRef<HTMLImageElement>(null);
+
+  // Handle map click for placing items
+  const handleMapClick = (e: React.MouseEvent<HTMLImageElement>) => {
+    if (!selectedItemForPlacement || !mapImageRef.current) return;
+
+    const rect = mapImageRef.current.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+    // Identify the type to call onUpdate correctly
+    const type = extinguishers.find(i => i.id === selectedItemForPlacement.id) ? 'extinguishers' :
+      hydrants.find(i => i.id === selectedItemForPlacement.id) ? 'hydrant' :
+      alarms.find(i => i.id === selectedItemForPlacement.id) ? 'alarm' :
+      'lighting';
+
+    const updatedItem = {
+      ...selectedItemForPlacement,
+      floorPlanId: selectedMapForEdit,
+      coordX: x,
+      coordY: y
+    };
+
+    onUpdate(type, selectedItemForPlacement.id, updatedItem);
+    setSelectedItemForPlacement(null);
+    notify("Ponto definido com sucesso!", "success");
+  };
 
   const uniqueSedes = useMemo(() => {
     const allItems = [...extinguishers, ...alarms, ...hydrants, ...lighting];
@@ -1084,6 +1115,115 @@ export const AdminDashboard = ({
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        ) : activeTab === 'floorPlans' && !mapEditorMode ? (
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                <MapIcon className="w-4 h-4" /> Gerenciar Plantas Baixas
+              </h3>
+              <div className="flex gap-2">
+                <button onClick={() => setMapEditorMode(true)} className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-sm font-medium flex items-center gap-2">
+                  <MousePointer2 className="w-4 h-4" /> Editor de Pontos
+                </button>
+                <button onClick={handleOpenAdd} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-sm font-medium flex items-center gap-2">
+                  <PlusCircle className="w-4 h-4" /> Adicionar Planta
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
+              {floorPlans.map(plan => (
+                <div key={plan.id} className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
+                  {plan.image && (
+                    <img src={plan.image} alt={plan.name} className="w-full h-40 object-cover" />
+                  )}
+                  <div className="p-4">
+                    <h4 className="font-bold text-gray-800">{plan.name}</h4>
+                    <p className="text-sm text-gray-500">{plan.sede}</p>
+                    <div className="flex gap-2 mt-3">
+                      <button onClick={() => { setSelectedMapForEdit(plan.id); setMapEditorMode(true); }} className="flex-1 bg-purple-100 text-purple-700 px-3 py-1.5 rounded text-xs font-bold hover:bg-purple-200 flex items-center justify-center gap-1">
+                        <MousePointer2 className="w-3 h-3" /> Editar Pontos
+                      </button>
+                      <button onClick={() => handleOpenEdit(plan)} className="bg-blue-100 text-blue-700 px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-200">
+                        <Edit3 className="w-3 h-3" />
+                      </button>
+                      <button onClick={() => { if (window.confirm(`Excluir ${plan.name}?`)) onDeleteFloorPlan(plan.id); }} className="bg-red-100 text-red-700 px-3 py-1.5 rounded text-xs font-bold hover:bg-red-200">
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : activeTab === 'floorPlans' && mapEditorMode ? (
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+              <div className="flex items-center gap-3">
+                <button onClick={() => setMapEditorMode(false)} className="text-gray-500 hover:text-gray-800">
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <h3 className="font-bold text-gray-800">Editor Visual de Pontos</h3>
+                <select
+                  value={selectedMapForEdit}
+                  onChange={(e) => setSelectedMapForEdit(e.target.value)}
+                  className="ml-4 border p-1 rounded text-sm"
+                >
+                  {floorPlans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+              <p className="text-sm text-gray-500">
+                {selectedItemForPlacement ? (
+                  <span className="text-purple-600 font-bold">Clique no mapa para posicionar {selectedItemForPlacement.id}</span>
+                ) : (
+                  "Selecione um item na lista ao lado para posicionar"
+                )}
+              </p>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-6">
+              <div className="lg:col-span-2">
+                {floorPlans.find(p => p.id === selectedMapForEdit) && (
+                  <div className="relative border-2 border-dashed border-gray-300 rounded-lg overflow-hidden">
+                    <img
+                      ref={mapImageRef}
+                      src={floorPlans.find(p => p.id === selectedMapForEdit)?.image}
+                      alt="Editor"
+                      className={`max-w-full h-auto block ${selectedItemForPlacement ? 'cursor-crosshair' : 'cursor-default'}`}
+                      style={{ maxHeight: '70vh' }}
+                      onClick={handleMapClick}
+                    />
+                    {[...extinguishers, ...hydrants, ...alarms, ...lighting].filter(i => i.floorPlanId === selectedMapForEdit).map(item => (
+                      <div
+                        key={item.id}
+                        className="absolute w-6 h-6 bg-green-500 rounded-full border-2 border-white shadow transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-white text-xs font-bold"
+                        style={{ left: `${item.coordX}%`, top: `${item.coordY}%` }}
+                        title={item.id}
+                      >
+                        {item.id.charAt(0)}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="lg:col-span-1 bg-gray-50 rounded-lg p-4 max-h-[70vh] overflow-y-auto">
+                <h4 className="font-bold text-gray-700 mb-3">Itens Disponíveis</h4>
+                <div className="space-y-2">
+                  {[...extinguishers, ...hydrants, ...alarms, ...lighting].map(item => (
+                    <div
+                      key={item.id}
+                      onClick={() => setSelectedItemForPlacement(item)}
+                      className={`p-3 rounded border text-sm cursor-pointer transition-colors ${selectedItemForPlacement?.id === item.id ? 'bg-slate-800 text-white border-slate-800' : 'hover:bg-gray-100 border-gray-200 bg-white'}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold">{item.id}</span>
+                        {item.floorPlanId === selectedMapForEdit && <CheckCircle className="w-3 h-3 text-green-500" />}
+                      </div>
+                      <p className="text-xs opacity-70 mt-1">{(item as any).local || (item as any).localizacao}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         ) : (
