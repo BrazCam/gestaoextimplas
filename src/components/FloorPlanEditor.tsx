@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
-import { ArrowLeft, CheckCircle, Map as MapIcon } from 'lucide-react';
-import { Extinguisher, Hydrant, Alarm, Lighting } from '@/types';
+import { ArrowLeft, CheckCircle, Map as MapIcon, MapPin, AlertTriangle } from 'lucide-react';
+import { Extinguisher, Hydrant, Alarm, Lighting, Location } from '@/types';
 
 interface FloorPlan {
   id: string;
@@ -15,7 +15,9 @@ interface FloorPlanEditorProps {
   hydrants: Hydrant[];
   alarms: Alarm[];
   lighting: Lighting[];
+  locations: Location[];
   onUpdate: (type: string, id: string, item: any) => void;
+  onUpdateLocation: (id: string, location: Location) => void;
   onClose: () => void;
   notify: (message: string, type?: 'error' | 'success' | 'info' | 'warning') => void;
 }
@@ -26,15 +28,20 @@ export const FloorPlanEditor = ({
   hydrants,
   alarms,
   lighting,
+  locations,
   onUpdate,
+  onUpdateLocation,
   onClose,
   notify
 }: FloorPlanEditorProps) => {
   const [selectedMapId, setSelectedMapId] = useState(floorPlans[0]?.id || '');
   const [selectedItemForPlacement, setSelectedItemForPlacement] = useState<any>(null);
+  const [selectedItemType, setSelectedItemType] = useState<'equipment' | 'location'>('location');
+  const [hoveredLocation, setHoveredLocation] = useState<Location | null>(null);
   const mapImageRef = useRef<HTMLImageElement>(null);
 
-  const allItems = useMemo(() => {
+  // Combine all equipment items
+  const allEquipmentItems = useMemo(() => {
     return [
       ...extinguishers.map(i => ({ ...i, itemType: 'extinguishers' })),
       ...hydrants.map(i => ({ ...i, itemType: 'hydrant' })),
@@ -43,10 +50,44 @@ export const FloorPlanEditor = ({
     ];
   }, [extinguishers, hydrants, alarms, lighting]);
 
-  const mapItems = useMemo(() => {
+  // Get equipment items placed on current map
+  const mapEquipmentItems = useMemo(() => {
     if (!selectedMapId) return [];
-    return allItems.filter((item: any) => item.floorPlanId === selectedMapId);
-  }, [selectedMapId, allItems]);
+    return allEquipmentItems.filter((item: any) => item.floorPlanId === selectedMapId);
+  }, [selectedMapId, allEquipmentItems]);
+
+  // Get locations for current map
+  const mapLocations = useMemo(() => {
+    if (!selectedMapId) return [];
+    return locations.filter(loc => loc.floorPlanId === selectedMapId);
+  }, [selectedMapId, locations]);
+
+  // Sort locations: available (no equipment) first in green, then allocated in gray
+  const sortedLocations = useMemo(() => {
+    const locationsWithStatus = locations.map(loc => {
+      // Check if any equipment is linked to this location
+      const linkedEquipment = allEquipmentItems.find(item => 
+        (item as any).locationId === loc.id
+      );
+      return {
+        ...loc,
+        hasEquipment: !!linkedEquipment,
+        linkedEquipment: linkedEquipment
+      };
+    });
+
+    // Sort: available first, then allocated
+    return locationsWithStatus.sort((a, b) => {
+      if (a.hasEquipment && !b.hasEquipment) return 1;
+      if (!a.hasEquipment && b.hasEquipment) return -1;
+      return 0;
+    });
+  }, [locations, allEquipmentItems]);
+
+  // Get equipment linked to a location
+  const getLinkedEquipment = (locationId: string) => {
+    return allEquipmentItems.find(item => (item as any).locationId === locationId);
+  };
 
   const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!selectedItemForPlacement || !mapImageRef.current) return;
@@ -55,29 +96,38 @@ export const FloorPlanEditor = ({
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
 
-    const updatedItem = {
-      ...selectedItemForPlacement,
-      floorPlanId: selectedMapId,
-      coordX: x,
-      coordY: y
-    };
+    if (selectedItemType === 'location') {
+      // Update location with coordinates
+      const updatedLocation: Location = {
+        ...selectedItemForPlacement,
+        floorPlanId: selectedMapId,
+        coordX: x,
+        coordY: y
+      };
+      onUpdateLocation(selectedItemForPlacement.id, updatedLocation);
+    } else {
+      // Update equipment with coordinates
+      const updatedItem = {
+        ...selectedItemForPlacement,
+        floorPlanId: selectedMapId,
+        coordX: x,
+        coordY: y
+      };
+      onUpdate(selectedItemForPlacement.itemType, selectedItemForPlacement.id, updatedItem);
+    }
 
-    onUpdate(selectedItemForPlacement.itemType, selectedItemForPlacement.id, updatedItem);
     setSelectedItemForPlacement(null);
     notify("Ponto definido com sucesso!", "success");
   };
 
-  const getItemColor = (item: any) => {
-    if (item.status === 'vencido' || item.status === 'irregular' || item.status === 'falha') {
-      return 'bg-red-500 border-red-700';
-    }
-    if (item.status === 'proximo' || item.status === 'atencao') {
-      return 'bg-orange-500 border-orange-700';
+  const getLocationColor = (loc: any) => {
+    if (loc.hasEquipment) {
+      return 'bg-gray-400 border-gray-600';
     }
     return 'bg-green-500 border-green-700';
   };
 
-  const getItemIcon = (itemType: string) => {
+  const getEquipmentIcon = (itemType: string) => {
     switch (itemType) {
       case 'extinguishers': return '🧯';
       case 'hydrant': return '🚿';
@@ -85,6 +135,16 @@ export const FloorPlanEditor = ({
       case 'lighting': return '💡';
       default: return '📍';
     }
+  };
+
+  const getEquipmentColor = (item: any) => {
+    if (item.status === 'vencido' || item.status === 'irregular' || item.status === 'falha') {
+      return 'bg-red-500 border-red-700';
+    }
+    if (item.status === 'proximo' || item.status === 'atencao') {
+      return 'bg-orange-500 border-orange-700';
+    }
+    return 'bg-blue-500 border-blue-700';
   };
 
   const selectedPlan = floorPlans.find(p => p.id === selectedMapId);
@@ -96,7 +156,7 @@ export const FloorPlanEditor = ({
           <ArrowLeft className="w-5 h-5" />
         </button>
         <MapIcon className="w-6 h-6 text-orange-500" />
-        <h1 className="text-white font-bold">Editor Visual de Pontos</h1>
+        <h1 className="text-white font-bold">Editor Visual de Pontos - Locais</h1>
         
         <select
           value={selectedMapId}
@@ -110,8 +170,8 @@ export const FloorPlanEditor = ({
 
         <div className="ml-auto text-sm text-slate-400">
           {selectedItemForPlacement 
-            ? `Clique no mapa para posicionar ${selectedItemForPlacement.id}` 
-            : "Selecione um item na lista para posicionar"}
+            ? `Clique no mapa para posicionar ${selectedItemForPlacement.nome || selectedItemForPlacement.id}` 
+            : "Selecione um local na lista para posicionar no mapa"}
         </div>
       </div>
 
@@ -128,22 +188,60 @@ export const FloorPlanEditor = ({
                 src={selectedPlan.image}
                 alt="Editor"
                 className="max-w-full h-auto block rounded-lg"
+                style={{ maxHeight: '80vh' }}
               />
               
-              {/* Render placed items */}
-              {mapItems.map((item: any) => {
-                if (item.coordX === undefined || item.coordY === undefined) return null;
+              {/* Render location points */}
+              {mapLocations.map((loc: Location) => {
+                if (loc.coordX === undefined || loc.coordY === undefined) return null;
+                const linkedEquipment = getLinkedEquipment(loc.id);
+                const hasEquipment = !!linkedEquipment;
+                
                 return (
                   <div
-                    key={item.id}
-                    className={`absolute w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs transform -translate-x-1/2 -translate-y-1/2 ${getItemColor(item)} cursor-pointer hover:scale-125 transition-transform shadow-lg`}
-                    style={{ left: `${item.coordX}%`, top: `${item.coordY}%` }}
-                    title={`${item.id} - ${item.local || item.localizacao}`}
+                    key={loc.id}
+                    className={`absolute w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs transform -translate-x-1/2 -translate-y-1/2 cursor-pointer hover:scale-125 transition-transform shadow-lg ${
+                      hasEquipment ? 'bg-gray-400 border-gray-600' : 'bg-green-500 border-green-700'
+                    }`}
+                    style={{ left: `${loc.coordX}%`, top: `${loc.coordY}%` }}
+                    onMouseEnter={() => setHoveredLocation(loc)}
+                    onMouseLeave={() => setHoveredLocation(null)}
                   >
-                    {getItemIcon(item.itemType)}
+                    <MapPin className="w-4 h-4 text-white" />
                   </div>
                 );
               })}
+
+              {/* Tooltip for hovered location */}
+              {hoveredLocation && hoveredLocation.coordX !== undefined && (
+                <div 
+                  className="absolute bg-white rounded-lg shadow-xl p-3 z-20 pointer-events-none min-w-[200px]"
+                  style={{ 
+                    left: `${hoveredLocation.coordX}%`, 
+                    top: `${(hoveredLocation.coordY || 0) + 5}%`,
+                    transform: 'translateX(-50%)'
+                  }}
+                >
+                  <p className="font-bold text-gray-800">{hoveredLocation.nome}</p>
+                  <p className="text-xs text-gray-500">{hoveredLocation.setor} - {hoveredLocation.sede}</p>
+                  {hoveredLocation.exigencia && (
+                    <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" /> Exigência: {hoveredLocation.exigencia}
+                    </p>
+                  )}
+                  {getLinkedEquipment(hoveredLocation.id) && (
+                    <div className="mt-2 pt-2 border-t">
+                      <p className="text-xs font-bold text-green-700">
+                        {getEquipmentIcon((getLinkedEquipment(hoveredLocation.id) as any)?.itemType)} 
+                        {' '}{getLinkedEquipment(hoveredLocation.id)?.id}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {(getLinkedEquipment(hoveredLocation.id) as any)?.tipo}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex items-center justify-center h-full text-slate-500">
@@ -152,27 +250,60 @@ export const FloorPlanEditor = ({
           )}
         </div>
 
-        {/* Items List */}
-        <div className="w-80 bg-slate-800 border-l border-slate-700 overflow-y-auto p-4">
-          <h3 className="text-white font-bold mb-4">Itens Disponíveis</h3>
+        {/* Locations List */}
+        <div className="w-96 bg-slate-800 border-l border-slate-700 overflow-y-auto p-4">
+          <h3 className="text-white font-bold mb-4">Locais Disponíveis</h3>
+          
+          {/* Legend */}
+          <div className="flex gap-4 mb-4 text-xs">
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+              <span className="text-slate-400">Disponível</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+              <span className="text-slate-400">Ocupado</span>
+            </div>
+          </div>
+
           <div className="space-y-2">
-            {allItems.map((item: any) => (
+            {sortedLocations.map((loc: any) => (
               <div
-                key={item.id}
-                onClick={() => setSelectedItemForPlacement(item)}
+                key={loc.id}
+                onClick={() => {
+                  setSelectedItemForPlacement(loc);
+                  setSelectedItemType('location');
+                }}
                 className={`p-3 rounded-lg border text-sm cursor-pointer transition-colors ${
-                  selectedItemForPlacement?.id === item.id 
-                    ? 'bg-slate-700 text-white border-blue-500' 
-                    : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-700'
+                  selectedItemForPlacement?.id === loc.id 
+                    ? 'bg-purple-600 text-white border-purple-400' 
+                    : loc.hasEquipment
+                      ? 'bg-slate-700 text-slate-400 border-slate-600'
+                      : 'bg-green-900/30 text-green-300 border-green-700/50 hover:bg-green-900/50'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-bold">{getItemIcon(item.itemType)} {item.id}</span>
-                  {item.floorPlanId === selectedMapId && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className={`w-4 h-4 ${loc.hasEquipment ? 'text-gray-400' : 'text-green-400'}`} />
+                    <span className="font-bold">{loc.nome}</span>
+                  </div>
+                  {loc.floorPlanId === selectedMapId && loc.coordX !== undefined && (
                     <CheckCircle className="w-4 h-4 text-green-500" />
                   )}
                 </div>
-                <p className="text-xs text-slate-500 mt-1">{item.local || item.localizacao}</p>
+                <p className="text-xs opacity-70 mt-1">{loc.setor} - {loc.sede}</p>
+                {loc.exigencia && (
+                  <p className="text-xs mt-1 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> {loc.exigencia}
+                  </p>
+                )}
+                {loc.linkedEquipment && (
+                  <div className="mt-2 pt-2 border-t border-slate-600">
+                    <p className="text-xs">
+                      {getEquipmentIcon(loc.linkedEquipment.itemType)} {loc.linkedEquipment.id}
+                    </p>
+                  </div>
+                )}
               </div>
             ))}
           </div>

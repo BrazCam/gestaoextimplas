@@ -273,17 +273,29 @@ const Index = () => {
     }
   };
 
-  const handleRelocate = async (type: string, extinguisherId: string, targetLocation: Location) => {
+  const handleRelocate = async (type: string, extinguisherId: string, targetLocation: Location, observacao?: string, ignorouExigencia?: boolean) => {
     const today = new Date().toISOString().split('T')[0];
     const ext = extinguishers.find(e => e.id === extinguisherId);
     if (!ext) throw new Error('Extintor não encontrado');
 
     const currentHistory = ext.historico || [];
+    let descricao = `Realocado de "${ext.localizacao || 'Não definido'}" para "${targetLocation.nome}" (${targetLocation.id})`;
+    
+    if (ignorouExigencia) {
+      descricao += ` [ATENÇÃO: Exigência do local não atendida - ${targetLocation.exigencia || 'N/A'}]`;
+    }
+
     const logEntry: HistoryLog = {
       data: today,
-      descricao: `Realocado de "${ext.localizacao || 'Não definido'}" para "${targetLocation.nome}" (${targetLocation.id})`,
+      descricao,
       tipo: 'Realocação',
-      tecnico: currentUser?.name || 'Operador'
+      tecnico: currentUser?.name || 'Operador',
+      details: ignorouExigencia ? {
+        ignorouExigencia: true,
+        exigenciaLocal: targetLocation.exigencia,
+        tipoEquipamento: ext.tipo,
+        observacao: observacao || 'Sem observação'
+      } : undefined
     };
 
     const { error } = await supabase.from('extinguishers').update({

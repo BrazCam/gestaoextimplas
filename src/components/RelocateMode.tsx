@@ -1,23 +1,36 @@
 import { useState } from 'react';
-import { ArrowLeft, MapPin, Package, CheckCircle, RefreshCw, LogOut, Search, QrCode, X, ScanLine } from 'lucide-react';
+import { ArrowLeft, MapPin, Package, CheckCircle, RefreshCw, LogOut, Search, QrCode, X, ScanLine, AlertTriangle, FileText } from 'lucide-react';
 import { RealQRScanner } from '@/components/RealQRScanner';
-import { Extinguisher, Location } from '@/types';
+import { Extinguisher, Location, HistoryLog } from '@/types';
 
 interface RelocateModeProps {
   locations: Location[];
   extinguishers: Extinguisher[];
-  onRelocate: (type: string, extinguisherId: string, targetLocation: Location) => Promise<void>;
+  onRelocate: (type: string, extinguisherId: string, targetLocation: Location, observacao?: string, ignorouExigencia?: boolean) => Promise<void>;
   onLogout: () => void;
   notify: (message: string, type?: 'error' | 'success' | 'info' | 'warning') => void;
 }
 
-type Step = 'start' | 'scan-loc' | 'scan-item' | 'success';
+type Step = 'start' | 'scan-loc' | 'scan-item' | 'mismatch-warning' | 'confirm-override' | 'observation' | 'success';
+
+// Map equipment types to location requirements
+const getEquipmentRequirement = (ext: Extinguisher): string => {
+  const tipo = ext.tipo?.toLowerCase() || '';
+  if (tipo.includes('pó') && tipo.includes('bc')) return 'Extintor Pó BC';
+  if (tipo.includes('pó') && tipo.includes('abc')) return 'Extintor Pó ABC';
+  if (tipo.includes('água') || tipo.includes('agua')) return 'Extintor Água';
+  if (tipo.includes('co2')) return 'Extintor CO2';
+  if (tipo.includes('esp') || tipo.includes('mecânica') || tipo.includes('mecanica')) return 'Extintor ESP Mecânica';
+  return 'Extintor Pó ABC'; // Default
+};
 
 export const RelocateMode = ({ locations, extinguishers, onRelocate, onLogout, notify }: RelocateModeProps) => {
   const [step, setStep] = useState<Step>('start');
   const [targetLocation, setTargetLocation] = useState<Location | null>(null);
   const [movedItem, setMovedItem] = useState<Extinguisher | null>(null);
   const [manualCode, setManualCode] = useState('');
+  const [observacao, setObservacao] = useState('');
+  const [pendingItem, setPendingItem] = useState<Extinguisher | null>(null);
 
   const handleScanLocation = (code: string) => {
     const scanCode = code ? String(code).trim() : '';
@@ -46,12 +59,49 @@ export const RelocateMode = ({ locations, extinguishers, onRelocate, onLogout, n
     );
     
     if (ext && targetLocation) {
-      onRelocate('extinguishers', ext.id, targetLocation);
+      // Check if equipment matches location requirement
+      if (targetLocation.exigencia) {
+        const equipmentType = getEquipmentRequirement(ext);
+        if (equipmentType !== targetLocation.exigencia) {
+          setPendingItem(ext);
+          setStep('mismatch-warning');
+          return;
+        }
+      }
+      
+      // No mismatch, proceed with relocation
+      completeRelocation(ext);
+    } else {
+      notify(`Extintor não encontrado para o código: ${scanCode}`, 'error');
+    }
+  };
+
+  const completeRelocation = async (ext: Extinguisher, obs?: string, ignorouExigencia?: boolean) => {
+    if (!targetLocation) return;
+    
+    try {
+      await onRelocate('extinguishers', ext.id, targetLocation, obs, ignorouExigencia);
       setMovedItem(ext);
       setStep('success');
       notify('Equipamento vinculado com sucesso!', 'success');
-    } else {
-      notify(`Extintor não encontrado para o código: ${scanCode}`, 'error');
+    } catch (error) {
+      notify('Erro ao realizar realocação', 'error');
+    }
+  };
+
+  const handleContinueWithMismatch = () => {
+    setStep('confirm-override');
+  };
+
+  const handleConfirmOverride = () => {
+    setStep('observation');
+  };
+
+  const handleFinalConfirm = () => {
+    if (pendingItem && targetLocation) {
+      completeRelocation(pendingItem, observacao || undefined, true);
+      setObservacao('');
+      setPendingItem(null);
     }
   };
 
@@ -60,6 +110,8 @@ export const RelocateMode = ({ locations, extinguishers, onRelocate, onLogout, n
     setTargetLocation(null);
     setMovedItem(null);
     setManualCode('');
+    setObservacao('');
+    setPendingItem(null);
   };
 
   return (
@@ -149,6 +201,13 @@ export const RelocateMode = ({ locations, extinguishers, onRelocate, onLogout, n
               <span>Destino: <strong>{targetLocation?.nome}</strong> ({targetLocation?.setor || targetLocation?.id})</span>
             </div>
 
+            {targetLocation?.exigencia && (
+              <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-3 rounded-lg flex items-center gap-2 text-sm">
+                <AlertTriangle className="w-5 h-5 text-yellow-600"/>
+                <span>Exigência do local: <strong>{targetLocation.exigencia}</strong></span>
+              </div>
+            )}
+
             <div className="bg-black rounded-xl border-4 border-green-500 relative overflow-hidden flex items-center justify-center flex-grow min-h-[300px]">
               <RealQRScanner onScanSuccess={handleScanItem} />
             </div>
@@ -181,6 +240,117 @@ export const RelocateMode = ({ locations, extinguishers, onRelocate, onLogout, n
             >
               Cancelar
             </button>
+          </div>
+        )}
+
+        {step === 'mismatch-warning' && pendingItem && (
+          <div className="flex-1 flex flex-col items-center justify-center space-y-6 animate-fade-in">
+            <div className="w-24 h-24 bg-orange-500 rounded-full flex items-center justify-center shadow-lg">
+              <AlertTriangle className="w-14 h-14 text-white" />
+            </div>
+            
+            <h2 className="text-2xl font-bold text-gray-800 text-center">Atenção!</h2>
+            
+            <div className="bg-white rounded-xl p-6 shadow-md border border-orange-200 w-full text-center">
+              <p className="text-gray-700 mb-4">O equipamento <strong>não corresponde</strong> à exigência do local.</p>
+              
+              <div className="bg-orange-50 rounded-lg p-4 mb-4">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-gray-500">Exigência do Local:</span>
+                  <span className="font-bold text-orange-700">{targetLocation?.exigencia}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500">Tipo do Equipamento:</span>
+                  <span className="font-bold text-gray-700">{pendingItem.tipo}</span>
+                </div>
+              </div>
+
+              <p className="text-sm text-gray-500">Deseja continuar mesmo assim?</p>
+            </div>
+
+            <div className="w-full space-y-3">
+              <button 
+                onClick={resetProcess} 
+                className="w-full py-4 bg-gray-200 text-gray-700 rounded-xl font-bold"
+              >
+                Voltar
+              </button>
+              <button 
+                onClick={handleContinueWithMismatch} 
+                className="w-full py-4 bg-orange-500 text-white rounded-xl font-bold shadow-lg hover:bg-orange-600 transition-colors"
+              >
+                Continuar a Troca
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'confirm-override' && (
+          <div className="flex-1 flex flex-col items-center justify-center space-y-6 animate-fade-in">
+            <div className="w-24 h-24 bg-red-500 rounded-full flex items-center justify-center shadow-lg">
+              <AlertTriangle className="w-14 h-14 text-white" />
+            </div>
+            
+            <h2 className="text-2xl font-bold text-gray-800 text-center">Confirmar Substituição</h2>
+            
+            <div className="bg-white rounded-xl p-6 shadow-md border border-red-200 w-full text-center">
+              <p className="text-gray-700 mb-4">
+                Você está prestes a vincular um equipamento que <strong>não corresponde</strong> à exigência do local.
+              </p>
+              <p className="text-sm text-red-600 font-medium">
+                Esta ação será registrada no relatório.
+              </p>
+            </div>
+
+            <div className="w-full space-y-3">
+              <button 
+                onClick={resetProcess} 
+                className="w-full py-4 bg-gray-200 text-gray-700 rounded-xl font-bold"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleConfirmOverride} 
+                className="w-full py-4 bg-red-500 text-white rounded-xl font-bold shadow-lg hover:bg-red-600 transition-colors"
+              >
+                Sim, desejo substituir mesmo assim
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'observation' && (
+          <div className="flex-1 flex flex-col items-center justify-center space-y-6 animate-fade-in">
+            <div className="w-20 h-20 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+              <FileText className="w-10 h-10 text-white" />
+            </div>
+            
+            <h2 className="text-xl font-bold text-gray-800 text-center">Observação (Opcional)</h2>
+            
+            <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200 w-full">
+              <p className="text-sm text-gray-500 mb-4">Descreva o motivo da substituição com equipamento diferente da exigência:</p>
+              <textarea
+                className="w-full border border-gray-300 rounded-lg p-3 text-sm min-h-[120px] resize-none"
+                placeholder="Ex: Equipamento em manutenção, substituição temporária..."
+                value={observacao}
+                onChange={(e) => setObservacao(e.target.value)}
+              />
+            </div>
+
+            <div className="w-full space-y-3">
+              <button 
+                onClick={resetProcess} 
+                className="w-full py-4 bg-gray-200 text-gray-700 rounded-xl font-bold"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleFinalConfirm} 
+                className="w-full py-4 bg-green-600 text-white rounded-xl font-bold shadow-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <CheckCircle className="w-5 h-5"/> Confirmar Realocação
+              </button>
+            </div>
           </div>
         )}
 
