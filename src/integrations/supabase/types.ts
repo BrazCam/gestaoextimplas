@@ -253,21 +253,33 @@ export type Database = {
       }
       locations: {
         Row: {
+          coordx: number | null
+          coordy: number | null
           created_at: string | null
+          exigencia: string | null
+          floorplanid: string | null
           id: string
           nome: string
           sede: string | null
           setor: string | null
         }
         Insert: {
+          coordx?: number | null
+          coordy?: number | null
           created_at?: string | null
+          exigencia?: string | null
+          floorplanid?: string | null
           id: string
           nome: string
           sede?: string | null
           setor?: string | null
         }
         Update: {
+          coordx?: number | null
+          coordy?: number | null
           created_at?: string | null
+          exigencia?: string | null
+          floorplanid?: string | null
           id?: string
           nome?: string
           sede?: string | null

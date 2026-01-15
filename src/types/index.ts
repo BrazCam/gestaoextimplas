@@ -20,7 +20,24 @@ export interface Location {
   nome: string;
   setor?: string;
   sede?: string;
+  exigencia?: string;
+  coordX?: number;
+  coordY?: number;
+  floorPlanId?: string;
 }
+
+export const EQUIPMENT_REQUIREMENTS = [
+  'Extintor Pó BC',
+  'Extintor Pó ABC',
+  'Extintor Água',
+  'Extintor CO2',
+  'Extintor ESP Mecânica',
+  'Mangueira de Hidrante',
+  'Luz de Emergência',
+  'Alarme de Incêndio'
+] as const;
+
+export type EquipmentRequirement = typeof EQUIPMENT_REQUIREMENTS[number];
 
 export interface Extinguisher {
   id: string;

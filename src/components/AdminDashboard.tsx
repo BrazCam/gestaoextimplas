@@ -350,7 +350,7 @@ export const AdminDashboard = ({
       });
     } else if (activeTab === 'locations') {
       setFormData({
-        id: nextId, nome: '', setor: '', sede: 'Matriz'
+        id: nextId, nome: '', setor: '', sede: 'Matriz', exigencia: ''
       });
     } else if (activeTab === 'floorPlans') {
       setFormData({
@@ -797,6 +797,21 @@ export const AdminDashboard = ({
                       <input className="w-full border p-2 rounded" value={formData.sede || ''} onChange={e => setFormData({ ...formData, sede: e.target.value })} placeholder="Ex: Matriz" />
                     </div>
                   </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Exigência de Equipamento</label>
+                    <select className="w-full border p-2 rounded" value={formData.exigencia || ''} onChange={e => setFormData({ ...formData, exigencia: e.target.value })}>
+                      <option value="">Selecione a exigência...</option>
+                      <option value="Extintor Pó BC">Extintor Pó BC</option>
+                      <option value="Extintor Pó ABC">Extintor Pó ABC</option>
+                      <option value="Extintor Água">Extintor Água</option>
+                      <option value="Extintor CO2">Extintor CO2</option>
+                      <option value="Extintor ESP Mecânica">Extintor ESP Mecânica</option>
+                      <option value="Mangueira de Hidrante">Mangueira de Hidrante</option>
+                      <option value="Luz de Emergência">Luz de Emergência</option>
+                      <option value="Alarme de Incêndio">Alarme de Incêndio</option>
+                    </select>
+                    <p className="text-xs text-gray-400 mt-1">Define qual tipo de equipamento é exigido neste local</p>
+                  </div>
                 </div>
               )}
 
@@ -1158,74 +1173,18 @@ export const AdminDashboard = ({
             </div>
           </div>
         ) : activeTab === 'floorPlans' && mapEditorMode ? (
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-              <div className="flex items-center gap-3">
-                <button onClick={() => setMapEditorMode(false)} className="text-gray-500 hover:text-gray-800">
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-                <h3 className="font-bold text-gray-800">Editor Visual de Pontos</h3>
-                <select
-                  value={selectedMapForEdit}
-                  onChange={(e) => setSelectedMapForEdit(e.target.value)}
-                  className="ml-4 border p-1 rounded text-sm"
-                >
-                  {floorPlans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </div>
-              <p className="text-sm text-gray-500">
-                {selectedItemForPlacement ? (
-                  <span className="text-purple-600 font-bold">Clique no mapa para posicionar {selectedItemForPlacement.id}</span>
-                ) : (
-                  "Selecione um item na lista ao lado para posicionar"
-                )}
-              </p>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-6">
-              <div className="lg:col-span-2">
-                {floorPlans.find(p => p.id === selectedMapForEdit) && (
-                  <div className="relative border-2 border-dashed border-gray-300 rounded-lg overflow-hidden">
-                    <img
-                      ref={mapImageRef}
-                      src={floorPlans.find(p => p.id === selectedMapForEdit)?.image}
-                      alt="Editor"
-                      className={`max-w-full h-auto block ${selectedItemForPlacement ? 'cursor-crosshair' : 'cursor-default'}`}
-                      style={{ maxHeight: '70vh' }}
-                      onClick={handleMapClick}
-                    />
-                    {[...extinguishers, ...hydrants, ...alarms, ...lighting].filter(i => i.floorPlanId === selectedMapForEdit).map(item => (
-                      <div
-                        key={item.id}
-                        className="absolute w-6 h-6 bg-green-500 rounded-full border-2 border-white shadow transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-white text-xs font-bold"
-                        style={{ left: `${item.coordX}%`, top: `${item.coordY}%` }}
-                        title={item.id}
-                      >
-                        {item.id.charAt(0)}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="lg:col-span-1 bg-gray-50 rounded-lg p-4 max-h-[70vh] overflow-y-auto">
-                <h4 className="font-bold text-gray-700 mb-3">Itens Disponíveis</h4>
-                <div className="space-y-2">
-                  {[...extinguishers, ...hydrants, ...alarms, ...lighting].map(item => (
-                    <div
-                      key={item.id}
-                      onClick={() => setSelectedItemForPlacement(item)}
-                      className={`p-3 rounded border text-sm cursor-pointer transition-colors ${selectedItemForPlacement?.id === item.id ? 'bg-slate-800 text-white border-slate-800' : 'hover:bg-gray-100 border-gray-200 bg-white'}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold">{item.id}</span>
-                        {item.floorPlanId === selectedMapForEdit && <CheckCircle className="w-3 h-3 text-green-500" />}
-                      </div>
-                      <p className="text-xs opacity-70 mt-1">{(item as any).local || (item as any).localizacao}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+          <FloorPlanEditor
+            floorPlans={floorPlans}
+            extinguishers={extinguishers}
+            hydrants={hydrants}
+            alarms={alarms}
+            lighting={lighting}
+            locations={locations}
+            onUpdate={onUpdate}
+            onUpdateLocation={onUpdateLocation}
+            onClose={() => setMapEditorMode(false)}
+            notify={notify}
+          />
         ) : (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
