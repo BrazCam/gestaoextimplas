@@ -50,16 +50,10 @@ export const FloorPlanEditor = ({
     ];
   }, [extinguishers, hydrants, alarms, lighting]);
 
-  // Get equipment items placed on current map
-  const mapEquipmentItems = useMemo(() => {
-    if (!selectedMapId) return [];
-    return allEquipmentItems.filter((item: any) => item.floorPlanId === selectedMapId);
-  }, [selectedMapId, allEquipmentItems]);
-
-  // Get locations for current map
+  // Get locations for current map (using lowercase floorplanid)
   const mapLocations = useMemo(() => {
     if (!selectedMapId) return [];
-    return locations.filter(loc => loc.floorPlanId === selectedMapId);
+    return locations.filter(loc => loc.floorplanid === selectedMapId);
   }, [selectedMapId, locations]);
 
   // Sort locations: available (no equipment) first in green, then allocated in gray
@@ -97,12 +91,12 @@ export const FloorPlanEditor = ({
     const y = ((e.clientY - rect.top) / rect.height) * 100;
 
     if (selectedItemType === 'location') {
-      // Update location with coordinates
+      // Update location with coordinates (using lowercase column names for Supabase)
       const updatedLocation: Location = {
         ...selectedItemForPlacement,
-        floorPlanId: selectedMapId,
-        coordX: x,
-        coordY: y
+        floorplanid: selectedMapId,
+        coordx: x,
+        coordy: y
       };
       onUpdateLocation(selectedItemForPlacement.id, updatedLocation);
     } else {
@@ -120,13 +114,6 @@ export const FloorPlanEditor = ({
     notify("Ponto definido com sucesso!", "success");
   };
 
-  const getLocationColor = (loc: any) => {
-    if (loc.hasEquipment) {
-      return 'bg-gray-400 border-gray-600';
-    }
-    return 'bg-green-500 border-green-700';
-  };
-
   const getEquipmentIcon = (itemType: string) => {
     switch (itemType) {
       case 'extinguishers': return '🧯';
@@ -135,16 +122,6 @@ export const FloorPlanEditor = ({
       case 'lighting': return '💡';
       default: return '📍';
     }
-  };
-
-  const getEquipmentColor = (item: any) => {
-    if (item.status === 'vencido' || item.status === 'irregular' || item.status === 'falha') {
-      return 'bg-red-500 border-red-700';
-    }
-    if (item.status === 'proximo' || item.status === 'atencao') {
-      return 'bg-orange-500 border-orange-700';
-    }
-    return 'bg-blue-500 border-blue-700';
   };
 
   const selectedPlan = floorPlans.find(p => p.id === selectedMapId);
@@ -191,9 +168,9 @@ export const FloorPlanEditor = ({
                 style={{ maxHeight: '80vh' }}
               />
               
-              {/* Render location points */}
+              {/* Render location points - using lowercase coordx/coordy */}
               {mapLocations.map((loc: Location) => {
-                if (loc.coordX === undefined || loc.coordY === undefined) return null;
+                if (loc.coordx === undefined || loc.coordy === undefined) return null;
                 const linkedEquipment = getLinkedEquipment(loc.id);
                 const hasEquipment = !!linkedEquipment;
                 
@@ -203,7 +180,7 @@ export const FloorPlanEditor = ({
                     className={`absolute w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs transform -translate-x-1/2 -translate-y-1/2 cursor-pointer hover:scale-125 transition-transform shadow-lg ${
                       hasEquipment ? 'bg-gray-400 border-gray-600' : 'bg-green-500 border-green-700'
                     }`}
-                    style={{ left: `${loc.coordX}%`, top: `${loc.coordY}%` }}
+                    style={{ left: `${loc.coordx}%`, top: `${loc.coordy}%` }}
                     onMouseEnter={() => setHoveredLocation(loc)}
                     onMouseLeave={() => setHoveredLocation(null)}
                   >
@@ -213,12 +190,12 @@ export const FloorPlanEditor = ({
               })}
 
               {/* Tooltip for hovered location */}
-              {hoveredLocation && hoveredLocation.coordX !== undefined && (
+              {hoveredLocation && hoveredLocation.coordx !== undefined && (
                 <div 
                   className="absolute bg-white rounded-lg shadow-xl p-3 z-20 pointer-events-none min-w-[200px]"
                   style={{ 
-                    left: `${hoveredLocation.coordX}%`, 
-                    top: `${(hoveredLocation.coordY || 0) + 5}%`,
+                    left: `${hoveredLocation.coordx}%`, 
+                    top: `${(hoveredLocation.coordy || 0) + 5}%`,
                     transform: 'translateX(-50%)'
                   }}
                 >
@@ -287,7 +264,7 @@ export const FloorPlanEditor = ({
                     <MapPin className={`w-4 h-4 ${loc.hasEquipment ? 'text-gray-400' : 'text-green-400'}`} />
                     <span className="font-bold">{loc.nome}</span>
                   </div>
-                  {loc.floorPlanId === selectedMapId && loc.coordX !== undefined && (
+                  {loc.floorplanid === selectedMapId && loc.coordx !== undefined && (
                     <CheckCircle className="w-4 h-4 text-green-500" />
                   )}
                 </div>

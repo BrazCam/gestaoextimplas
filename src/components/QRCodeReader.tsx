@@ -28,17 +28,19 @@ export const QRCodeReader = ({ onBack, data, notify }: QRCodeReaderProps) => {
     
     const allItems = [...data.extinguishers, ...data.alarms, ...data.hydrants, ...data.lighting];
     
-    // Busca flexível: por ID exato, ID parcial, número de cilindro, ou local
+    // Busca flexível: por ID exato, ID parcial, número de cilindro, código de barras, ou local
     const found = allItems.find(i => {
       const id = i.id?.toLowerCase() || '';
       const numeroCilindro = (i as any).numeroCilindro?.toLowerCase() || '';
-      const local = ((i as any).localizacao || (i as any).local || '').toLowerCase();
+      const codigoBarras = (i as any).codigoBarras?.toLowerCase() || '';
       
       return id === searchTerm || 
              id.includes(searchTerm) || 
              searchTerm.includes(id) ||
              numeroCilindro === searchTerm ||
-             numeroCilindro.includes(searchTerm);
+             numeroCilindro.includes(searchTerm) ||
+             codigoBarras === searchTerm ||
+             codigoBarras.includes(searchTerm);
     });
 
     if (found) {

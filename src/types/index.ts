@@ -21,9 +21,11 @@ export interface Location {
   setor?: string;
   sede?: string;
   exigencia?: string;
-  coordX?: number;
-  coordY?: number;
-  floorPlanId?: string;
+  // Note: Database uses lowercase column names (coordx, coordy, floorplanid)
+  // These are mapped when reading/writing to Supabase
+  coordx?: number;
+  coordy?: number;
+  floorplanid?: string;
 }
 
 export const EQUIPMENT_REQUIREMENTS = [
