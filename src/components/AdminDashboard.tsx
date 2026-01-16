@@ -4,7 +4,7 @@ import {
   PlusCircle, Edit3, Trash2, X, Save, PackagePlus, Building2, Camera,
   Image as ImageIcon, FileDown, FileSpreadsheet, FileUp, Cpu, QrCode,
   SearchCode, RefreshCcw, ClipboardCheck, Search, FileText, MapPin,
-  Map as MapIcon, MousePointer2, ArrowLeft, CheckCircle
+  Map as MapIcon, MousePointer2, ArrowLeft, CheckCircle, AlertTriangle, ClipboardList
 } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { RealQRScanner } from './RealQRScanner';
@@ -801,13 +801,13 @@ export const AdminDashboard = ({
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Exigência de Equipamento</label>
                     <select className="w-full border p-2 rounded" value={formData.exigencia || ''} onChange={e => setFormData({ ...formData, exigencia: e.target.value })}>
                       <option value="">Selecione a exigência...</option>
-                      <option value="Extintor Pó BC">Extintor Pó BC</option>
-                      <option value="Extintor Pó ABC">Extintor Pó ABC</option>
+                      <option value="Pó BC">Pó BC</option>
+                      <option value="Pó ABC">Pó ABC</option>
                       <option value="Extintor Água">Extintor Água</option>
                       <option value="Extintor CO2">Extintor CO2</option>
-                      <option value="Extintor ESP Mecânica">Extintor ESP Mecânica</option>
-                      <option value="Mangueira de Hidrante">Mangueira de Hidrante</option>
-                      <option value="Luz de Emergência">Luz de Emergência</option>
+                      <option value="ESP Mecânica">ESP Mecânica</option>
+                      <option value="Mangueira Hidrante">Mangueira Hidrante</option>
+                      <option value="Luminária de Emergência">Luminária de Emergência</option>
                       <option value="Alarme de Incêndio">Alarme de Incêndio</option>
                     </select>
                     <p className="text-xs text-gray-400 mt-1">Define qual tipo de equipamento é exigido neste local</p>
@@ -957,19 +957,121 @@ export const AdminDashboard = ({
             { id: 'lighting', icon: Lightbulb, label: 'Iluminação' },
             { id: 'locations', icon: Building2, label: 'Locais' },
             { id: 'floorPlans', icon: ImageIcon, label: 'Plantas' },
-            { id: 'feeding', icon: Zap, label: 'Alimentação', highlight: true }
+            { id: 'reports', icon: ClipboardList, label: 'Relatórios', highlight: 'yellow' },
+            { id: 'feeding', icon: Zap, label: 'Alimentação', highlight: 'orange' }
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => { setActiveTab(tab.id); setFeedItem(null); }}
-              className={`flex items-center justify-center p-3 rounded-lg border font-bold transition-all text-xs ${activeTab === tab.id ? ((tab as any).highlight ? 'bg-orange-600 text-white border-orange-600' : 'bg-slate-800 text-white border-slate-800') : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}
+              className={`flex items-center justify-center p-3 rounded-lg border font-bold transition-all text-xs ${
+                activeTab === tab.id 
+                  ? ((tab as any).highlight === 'orange' ? 'bg-orange-600 text-white border-orange-600' : 
+                     (tab as any).highlight === 'yellow' ? 'bg-yellow-500 text-white border-yellow-500' : 
+                     'bg-slate-800 text-white border-slate-800') 
+                  : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+              }`}
             >
               <tab.icon className="w-4 h-4 mr-1" /> {tab.label}
             </button>
           ))}
         </div>
 
-        {activeTab === 'feeding' ? (
+        {activeTab === 'reports' ? (
+          <div className="animate-fade-in space-y-6">
+            <div className="bg-white p-8 rounded-xl shadow-md border-t-4 border-yellow-500">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                <ClipboardList className="w-6 h-6 mr-2 text-yellow-500" /> Relatórios de Ocorrências
+              </h2>
+
+              {/* Trocas forçadas */}
+              <div className="mb-8">
+                <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-orange-500" />
+                  Trocas com Exigência Ignorada
+                </h3>
+                
+                {(() => {
+                  // Collect all forced relocations from all extinguishers
+                  const forcedRelocations: Array<{
+                    extinguisherId: string;
+                    tipo: string;
+                    data: string;
+                    tecnico: string;
+                    exigenciaLocal: string;
+                    observacao: string;
+                    localNome: string;
+                  }> = [];
+
+                  extinguishers.forEach(ext => {
+                    if (ext.historico) {
+                      ext.historico.forEach((log: any) => {
+                        if (log.details?.ignorouExigencia) {
+                          forcedRelocations.push({
+                            extinguisherId: ext.id,
+                            tipo: ext.tipo || 'N/A',
+                            data: log.data,
+                            tecnico: log.tecnico,
+                            exigenciaLocal: log.details.exigenciaLocal || 'N/A',
+                            observacao: log.details.observacao || 'Sem observação',
+                            localNome: ext.localizacao || 'N/A'
+                          });
+                        }
+                      });
+                    }
+                  });
+
+                  // Sort by date descending
+                  forcedRelocations.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+
+                  if (forcedRelocations.length === 0) {
+                    return (
+                      <div className="bg-gray-50 rounded-xl p-8 text-center text-gray-400">
+                        <AlertTriangle className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                        <p>Nenhuma troca forçada registrada.</p>
+                        <p className="text-sm mt-1">Trocas forçadas ocorrem quando um equipamento é vinculado a um local com exigência diferente.</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-3">
+                      {forcedRelocations.map((item, idx) => (
+                        <div key={idx} className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="bg-orange-600 text-white px-2 py-0.5 rounded text-xs font-bold">
+                                  TROCA FORÇADA
+                                </span>
+                                <span className="text-sm text-gray-500">
+                                  {new Date(item.data).toLocaleDateString('pt-BR')}
+                                </span>
+                              </div>
+                              <p className="font-bold text-gray-800">
+                                Extintor: <span className="font-mono">{item.extinguisherId}</span>
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                Tipo: <strong>{item.tipo}</strong> → Local exige: <strong className="text-orange-700">{item.exigenciaLocal}</strong>
+                              </p>
+                              <p className="text-sm text-gray-500">Local atual: {item.localNome}</p>
+                              <p className="text-sm text-gray-500">Técnico: {item.tecnico}</p>
+                              {item.observacao && item.observacao !== 'Sem observação' && (
+                                <div className="mt-2 bg-white rounded p-2 border border-orange-100">
+                                  <p className="text-xs font-bold text-gray-400 uppercase mb-1">Observação do Técnico:</p>
+                                  <p className="text-sm text-gray-700">{item.observacao}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        ) : activeTab === 'feeding' ? (
           <div className="animate-fade-in space-y-6">
             <div className="bg-white p-8 rounded-xl shadow-md border-t-4 border-orange-500">
               <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">

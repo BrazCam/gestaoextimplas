@@ -16,12 +16,12 @@ type Step = 'start' | 'scan-loc' | 'scan-item' | 'mismatch-warning' | 'confirm-o
 // Map equipment types to location requirements
 const getEquipmentRequirement = (ext: Extinguisher): string => {
   const tipo = ext.tipo?.toLowerCase() || '';
-  if (tipo.includes('pó') && tipo.includes('bc')) return 'Extintor Pó BC';
-  if (tipo.includes('pó') && tipo.includes('abc')) return 'Extintor Pó ABC';
+  if (tipo.includes('pó') && tipo.includes('bc') && !tipo.includes('abc')) return 'Pó BC';
+  if (tipo.includes('pó') && tipo.includes('abc')) return 'Pó ABC';
   if (tipo.includes('água') || tipo.includes('agua')) return 'Extintor Água';
   if (tipo.includes('co2')) return 'Extintor CO2';
-  if (tipo.includes('esp') || tipo.includes('mecânica') || tipo.includes('mecanica')) return 'Extintor ESP Mecânica';
-  return 'Extintor Pó ABC'; // Default
+  if (tipo.includes('esp') || tipo.includes('mecânica') || tipo.includes('mecanica')) return 'ESP Mecânica';
+  return 'Pó ABC'; // Default
 };
 
 export const RelocateMode = ({ locations, extinguishers, onRelocate, onLogout, notify }: RelocateModeProps) => {
