@@ -27,13 +27,13 @@ export interface Location {
 }
 
 export const EQUIPMENT_REQUIREMENTS = [
-  'Extintor Pó BC',
-  'Extintor Pó ABC',
+  'Pó BC',
+  'Pó ABC',
   'Extintor Água',
   'Extintor CO2',
-  'Extintor ESP Mecânica',
-  'Mangueira de Hidrante',
-  'Luz de Emergência',
+  'ESP Mecânica',
+  'Mangueira Hidrante',
+  'Luminária de Emergência',
   'Alarme de Incêndio'
 ] as const;
 
