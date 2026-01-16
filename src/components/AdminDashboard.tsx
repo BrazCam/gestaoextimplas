@@ -11,6 +11,7 @@ import { RealQRScanner } from './RealQRScanner';
 import { LaudoPdfImporter } from './LaudoPdfImporter';
 import { LaudoExtractorModal } from './LaudoExtractorModal';
 import { FloorPlanEditor } from './FloorPlanEditor';
+import { ReportsSection } from './ReportsSection';
 import { compressImage } from '@/utils/imageCompression';
 import { Extinguisher, Alarm, Hydrant, Lighting, Location } from '@/types';
 
@@ -611,15 +612,21 @@ export const AdminDashboard = ({
                       <input className="w-full border p-2 rounded" value={formData.numeroCilindro || ''} onChange={e => setFormData({ ...formData, numeroCilindro: e.target.value })} placeholder="Ex: 12345-AB" />
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Código de Barras</label>
+                      <input className="w-full border p-2 rounded" value={formData.codigoBarras || ''} onChange={e => setFormData({ ...formData, codigoBarras: e.target.value })} placeholder="Ex: 7891234567890" />
+                    </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Marca</label>
                       <input className="w-full border p-2 rounded" value={formData.marca || ''} onChange={e => setFormData({ ...formData, marca: e.target.value })} />
                     </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tipo</label>
                       <select className="w-full border p-2 rounded" value={formData.tipo || ''} onChange={e => setFormData({ ...formData, tipo: e.target.value })}>
-                        <option>Pó Químico ABC</option><option>CO2</option><option>Água</option><option>AP</option>
+                        <option>Pó Químico ABC</option><option>Pó Químico BC</option><option>CO2</option><option>Água</option><option>AP</option><option>Espuma Mecânica</option>
                       </select>
                     </div>
                     <div>
@@ -977,100 +984,13 @@ export const AdminDashboard = ({
         </div>
 
         {activeTab === 'reports' ? (
-          <div className="animate-fade-in space-y-6">
-            <div className="bg-white p-8 rounded-xl shadow-md border-t-4 border-yellow-500">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-                <ClipboardList className="w-6 h-6 mr-2 text-yellow-500" /> Relatórios de Ocorrências
-              </h2>
-
-              {/* Trocas forçadas */}
-              <div className="mb-8">
-                <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-orange-500" />
-                  Trocas com Exigência Ignorada
-                </h3>
-                
-                {(() => {
-                  // Collect all forced relocations from all extinguishers
-                  const forcedRelocations: Array<{
-                    extinguisherId: string;
-                    tipo: string;
-                    data: string;
-                    tecnico: string;
-                    exigenciaLocal: string;
-                    observacao: string;
-                    localNome: string;
-                  }> = [];
-
-                  extinguishers.forEach(ext => {
-                    if (ext.historico) {
-                      ext.historico.forEach((log: any) => {
-                        if (log.details?.ignorouExigencia) {
-                          forcedRelocations.push({
-                            extinguisherId: ext.id,
-                            tipo: ext.tipo || 'N/A',
-                            data: log.data,
-                            tecnico: log.tecnico,
-                            exigenciaLocal: log.details.exigenciaLocal || 'N/A',
-                            observacao: log.details.observacao || 'Sem observação',
-                            localNome: ext.localizacao || 'N/A'
-                          });
-                        }
-                      });
-                    }
-                  });
-
-                  // Sort by date descending
-                  forcedRelocations.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
-
-                  if (forcedRelocations.length === 0) {
-                    return (
-                      <div className="bg-gray-50 rounded-xl p-8 text-center text-gray-400">
-                        <AlertTriangle className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                        <p>Nenhuma troca forçada registrada.</p>
-                        <p className="text-sm mt-1">Trocas forçadas ocorrem quando um equipamento é vinculado a um local com exigência diferente.</p>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div className="space-y-3">
-                      {forcedRelocations.map((item, idx) => (
-                        <div key={idx} className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="bg-orange-600 text-white px-2 py-0.5 rounded text-xs font-bold">
-                                  TROCA FORÇADA
-                                </span>
-                                <span className="text-sm text-gray-500">
-                                  {new Date(item.data).toLocaleDateString('pt-BR')}
-                                </span>
-                              </div>
-                              <p className="font-bold text-gray-800">
-                                Extintor: <span className="font-mono">{item.extinguisherId}</span>
-                              </p>
-                              <p className="text-sm text-gray-600">
-                                Tipo: <strong>{item.tipo}</strong> → Local exige: <strong className="text-orange-700">{item.exigenciaLocal}</strong>
-                              </p>
-                              <p className="text-sm text-gray-500">Local atual: {item.localNome}</p>
-                              <p className="text-sm text-gray-500">Técnico: {item.tecnico}</p>
-                              {item.observacao && item.observacao !== 'Sem observação' && (
-                                <div className="mt-2 bg-white rounded p-2 border border-orange-100">
-                                  <p className="text-xs font-bold text-gray-400 uppercase mb-1">Observação do Técnico:</p>
-                                  <p className="text-sm text-gray-700">{item.observacao}</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-          </div>
+          <ReportsSection
+            extinguishers={extinguishers}
+            hydrants={hydrants}
+            alarms={alarms}
+            lighting={lighting}
+            notify={notify}
+          />
         ) : activeTab === 'feeding' ? (
           <div className="animate-fade-in space-y-6">
             <div className="bg-white p-8 rounded-xl shadow-md border-t-4 border-orange-500">
@@ -1287,6 +1207,60 @@ export const AdminDashboard = ({
             onClose={() => setMapEditorMode(false)}
             notify={notify}
           />
+        ) : activeTab === 'locations' ? (
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                <Building2 className="w-4 h-4" /> Gestão de Locais
+              </h3>
+              <button onClick={handleOpenAdd} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-sm font-medium flex items-center gap-2">
+                <PlusCircle className="w-4 h-4" /> Adicionar Local
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-100 text-gray-600 font-bold uppercase text-xs">
+                  <tr>
+                    <th className="px-4 py-3">ID</th>
+                    <th className="px-4 py-3">Nome</th>
+                    <th className="px-4 py-3">Setor</th>
+                    <th className="px-4 py-3">Sede</th>
+                    <th className="px-4 py-3">Exigência</th>
+                    <th className="px-4 py-3 text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {currentData.map((item: any) => (
+                    <tr key={item.id} className="hover:bg-blue-50/50 transition-colors">
+                      <td className="px-4 py-3 font-mono font-bold text-gray-700">{item.id}</td>
+                      <td className="px-4 py-3 font-medium">{item.nome}</td>
+                      <td className="px-4 py-3 text-gray-600">{item.setor || '-'}</td>
+                      <td className="px-4 py-3 text-gray-600">{item.sede || 'Matriz'}</td>
+                      <td className="px-4 py-3">
+                        {item.exigencia ? (
+                          <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-bold">
+                            {item.exigencia}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex justify-center gap-2">
+                          <button onClick={() => handleOpenEdit(item)} className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50" title="Editar">
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => { if (window.confirm(`Excluir ${item.id}?`)) onDeleteLocation(item.id); }} className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50" title="Excluir">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         ) : (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">

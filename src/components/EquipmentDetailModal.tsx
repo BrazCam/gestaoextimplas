@@ -53,13 +53,22 @@ export const EquipmentDetailModal = ({ item, onClose, typeLabel = "Equipamento" 
             <h2 className="text-xl font-bold">{typeLabel}</h2>
           </div>
           <p className="text-white/60 font-mono text-sm">{item.id} - {item.localizacao || item.local}</p>
-          {item.numeroCilindro && (
-            <div className="mt-3 inline-block bg-white/10 px-3 py-1.5 rounded-lg border border-white/20">
-              <p className="text-orange-400 font-mono text-sm font-bold flex items-center gap-2">
-                <span className="text-xs text-white/50 uppercase font-normal">Cilindro:</span> {item.numeroCilindro}
-              </p>
-            </div>
-          )}
+          <div className="flex flex-wrap gap-2 mt-3">
+            {item.numeroCilindro && (
+              <div className="inline-block bg-white/10 px-3 py-1.5 rounded-lg border border-white/20">
+                <p className="text-orange-400 font-mono text-sm font-bold flex items-center gap-2">
+                  <span className="text-xs text-white/50 uppercase font-normal">Cilindro:</span> {item.numeroCilindro}
+                </p>
+              </div>
+            )}
+            {item.codigoBarras && (
+              <div className="inline-block bg-white/10 px-3 py-1.5 rounded-lg border border-white/20">
+                <p className="text-blue-400 font-mono text-sm font-bold flex items-center gap-2">
+                  <span className="text-xs text-white/50 uppercase font-normal">Cód. Barras:</span> {item.codigoBarras}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         {item.fotoLocal && (
