@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { 
   AlertTriangle, ClipboardList, FileText, Printer, Camera, 
   ChevronDown, ChevronUp, Calendar, User, MapPin, Image as ImageIcon,
-  Download, Filter, X
+  Download, Filter, X, Wrench
 } from 'lucide-react';
 import { Extinguisher, Hydrant, Alarm, Lighting, HistoryLog } from '@/types';
 
@@ -43,7 +43,8 @@ export const ReportsSection = ({
   lighting,
   notify 
 }: ReportsSectionProps) => {
-  const [activeReport, setActiveReport] = useState<'nonconformity' | 'forced' | 'photos'>('nonconformity');
+  const [activeReport, setActiveReport] = useState<'nonconformity' | 'forced' | 'photos' | 'maintenance'>('nonconformity');
+  const [selectedMaintenanceDate, setSelectedMaintenanceDate] = useState<string | null>(null);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [photoModal, setPhotoModal] = useState<string | null>(null);
   const [filterSede, setFilterSede] = useState('Todas');
@@ -195,6 +196,60 @@ export const ReportsSection = ({
     return items;
   }, [extinguishers, hydrants, alarms, lighting, filterSede]);
 
+  // Collect maintenance records
+  const maintenanceRecords = useMemo(() => {
+    const records: Map<string, Array<{
+      id: string;
+      tipo: string;
+      local: string;
+      sede: string;
+      tipoManutencao: string;
+      dataManutencao: string;
+      proximaManutencao?: string;
+      equipmentType: string;
+    }>> = new Map();
+
+    const addRecord = (item: any, equipmentType: string, dateField: string, nextField: string, label: string) => {
+      if (filterSede !== 'Todas' && item.sede !== filterSede) return;
+      
+      const dateValue = item[dateField];
+      if (!dateValue) return;
+
+      const dateKey = dateValue.split('T')[0]; // Get YYYY-MM-DD
+      
+      const record = {
+        id: item.id,
+        tipo: item.tipo || equipmentType,
+        local: item.localizacao || item.local || 'N/A',
+        sede: item.sede || 'Matriz',
+        tipoManutencao: label,
+        dataManutencao: dateValue,
+        proximaManutencao: item[nextField],
+        equipmentType
+      };
+
+      if (!records.has(dateKey)) {
+        records.set(dateKey, []);
+      }
+      records.get(dateKey)!.push(record);
+    };
+
+    extinguishers.forEach(ext => {
+      addRecord(ext, 'Extintor', 'ultimaManutencao', 'proximaManutencao', 'Recarga/Manutenção');
+      addRecord(ext, 'Extintor', 'testeHidrostatico', 'proximaManutencao', 'Teste Hidrostático');
+    });
+    hydrants.forEach(hyd => addRecord(hyd, 'Mangueira', 'ultimoTesteHidro', 'proximoTesteHidro', 'Teste Hidrostático'));
+    alarms.forEach(alm => addRecord(alm, 'Alarme', 'ultimoTeste', 'proximaVistoria', 'Teste'));
+    lighting.forEach(lit => addRecord(lit, 'Iluminação', 'teste', 'proximaVistoria', 'Teste'));
+
+    // Sort by date descending
+    const sortedEntries = Array.from(records.entries()).sort((a, b) => 
+      new Date(b[0]).getTime() - new Date(a[0]).getTime()
+    );
+
+    return new Map(sortedEntries);
+  }, [extinguishers, hydrants, alarms, lighting, filterSede]);
+
   const handlePrint = (reportType: string) => {
     const printContent = document.getElementById(`print-${reportType}`);
     if (!printContent) return;
@@ -320,6 +375,19 @@ export const ReportsSection = ({
             <Camera className="w-4 h-4" /> Relatório com Fotos
             <span className={`px-2 py-0.5 rounded-full text-xs ${activeReport === 'photos' ? 'bg-white/20' : 'bg-purple-100 text-purple-700'}`}>
               {itemsWithPhotos.length}
+            </span>
+          </button>
+          <button
+            onClick={() => { setActiveReport('maintenance'); setSelectedMaintenanceDate(null); }}
+            className={`px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-all ${
+              activeReport === 'maintenance' 
+                ? 'bg-blue-600 text-white shadow-md' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            <Wrench className="w-4 h-4" /> Manutenções Realizadas
+            <span className={`px-2 py-0.5 rounded-full text-xs ${activeReport === 'maintenance' ? 'bg-white/20' : 'bg-blue-100 text-blue-700'}`}>
+              {maintenanceRecords.size}
             </span>
           </button>
         </div>
@@ -510,6 +578,116 @@ export const ReportsSection = ({
                       </div>
                       <p className="text-xs text-gray-500">{item.tipo}</p>
                       <p className="text-xs text-gray-400">{item.local} - {item.sede}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Maintenance Report */}
+        {activeReport === 'maintenance' && (
+          <div id="print-maintenance">
+            <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">
+              <Wrench className="w-5 h-5 text-blue-500" />
+              Manutenções Realizadas
+            </h3>
+            
+            {maintenanceRecords.size === 0 ? (
+              <div className="bg-gray-50 rounded-xl p-8 text-center text-gray-400">
+                <Wrench className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>Nenhuma manutenção registrada.</p>
+                <p className="text-sm mt-1">Registros de manutenção aparecerão aqui quando realizados.</p>
+              </div>
+            ) : selectedMaintenanceDate ? (
+              // Detailed view for selected date
+              <div>
+                <button
+                  onClick={() => setSelectedMaintenanceDate(null)}
+                  className="mb-4 text-blue-600 hover:text-blue-800 text-sm font-bold flex items-center gap-1"
+                >
+                  ← Voltar para lista de datas
+                </button>
+                
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <h4 className="font-bold text-blue-800 flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    Manutenções em {new Date(selectedMaintenanceDate).toLocaleDateString('pt-BR')}
+                  </h4>
+                  <p className="text-sm text-blue-600">
+                    {maintenanceRecords.get(selectedMaintenanceDate)?.length || 0} equipamento(s)
+                  </p>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-100">
+                      <tr>
+                        <th className="p-3 text-left font-bold">ID</th>
+                        <th className="p-3 text-left font-bold">Local</th>
+                        <th className="p-3 text-left font-bold">Tipo Equipamento</th>
+                        <th className="p-3 text-left font-bold">Tipo Manutenção</th>
+                        <th className="p-3 text-left font-bold">Próxima Manutenção</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {maintenanceRecords.get(selectedMaintenanceDate)?.map((record, idx) => (
+                        <tr key={`${record.id}-${idx}`} className="border-b hover:bg-slate-50">
+                          <td className="p-3 font-mono font-bold">{record.id}</td>
+                          <td className="p-3">{record.local} - {record.sede}</td>
+                          <td className="p-3">
+                            <span className="bg-slate-200 px-2 py-1 rounded text-xs font-bold">
+                              {record.equipmentType}
+                            </span>
+                            <span className="ml-2 text-gray-600">{record.tipo}</span>
+                          </td>
+                          <td className="p-3">
+                            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-bold">
+                              {record.tipoManutencao}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            {record.proximaManutencao 
+                              ? new Date(record.proximaManutencao).toLocaleDateString('pt-BR')
+                              : '---'
+                            }
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              // Date list view
+              <div className="space-y-2">
+                {Array.from(maintenanceRecords.entries()).map(([date, records]) => (
+                  <div
+                    key={date}
+                    onClick={() => setSelectedMaintenanceDate(date)}
+                    className="item bg-blue-50 border border-blue-200 rounded-lg p-4 cursor-pointer hover:bg-blue-100 transition-colors"
+                  >
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-blue-600 text-white p-2 rounded-lg">
+                          <Calendar className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-800">
+                            {new Date(date).toLocaleDateString('pt-BR', { 
+                              weekday: 'long', 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {records.length} equipamento(s) com manutenção
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronDown className="w-5 h-5 text-gray-400" />
                     </div>
                   </div>
                 ))}
