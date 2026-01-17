@@ -605,7 +605,25 @@ export const AdminDashboard = ({
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Local</label>
-                      <input className="w-full border p-2 rounded" value={formData.localizacao || ''} onChange={e => setFormData({ ...formData, localizacao: e.target.value })} placeholder="Ex: Hall 1º Andar" />
+                      <select 
+                        className="w-full border p-2 rounded" 
+                        value={formData.locationId || ''} 
+                        onChange={e => {
+                          const selectedLocation = locations.find(loc => loc.id === e.target.value);
+                          setFormData({ 
+                            ...formData, 
+                            locationId: e.target.value,
+                            localizacao: selectedLocation?.nome || ''
+                          });
+                        }}
+                      >
+                        <option value="">Selecione um local</option>
+                        {locations.map(loc => (
+                          <option key={loc.id} value={loc.id}>
+                            {loc.nome} - {loc.setor} ({loc.sede})
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nº Cilindro</label>
@@ -672,7 +690,25 @@ export const AdminDashboard = ({
                 <div className="space-y-4 mt-2">
                   <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Local</label>
-                    <input className="w-full border p-2 rounded" value={formData.local || ''} onChange={e => setFormData({ ...formData, local: e.target.value })} placeholder="Ex: Recepção Principal" />
+                    <select 
+                      className="w-full border p-2 rounded" 
+                      value={formData.locationId || ''} 
+                      onChange={e => {
+                        const selectedLocation = locations.find(loc => loc.id === e.target.value);
+                        setFormData({ 
+                          ...formData, 
+                          locationId: e.target.value,
+                          local: selectedLocation?.nome || ''
+                        });
+                      }}
+                    >
+                      <option value="">Selecione um local</option>
+                      {locations.map(loc => (
+                        <option key={loc.id} value={loc.id}>
+                          {loc.nome} - {loc.setor} ({loc.sede})
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -705,7 +741,25 @@ export const AdminDashboard = ({
                 <div className="col-span-2 space-y-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Local</label>
-                    <input className="w-full border p-2 rounded" value={formData.local || ''} onChange={e => setFormData({ ...formData, local: e.target.value })} placeholder="Ex: Corredor Principal" />
+                    <select 
+                      className="w-full border p-2 rounded" 
+                      value={formData.locationId || ''} 
+                      onChange={e => {
+                        const selectedLocation = locations.find(loc => loc.id === e.target.value);
+                        setFormData({ 
+                          ...formData, 
+                          locationId: e.target.value,
+                          local: selectedLocation?.nome || ''
+                        });
+                      }}
+                    >
+                      <option value="">Selecione um local</option>
+                      {locations.map(loc => (
+                        <option key={loc.id} value={loc.id}>
+                          {loc.nome} - {loc.setor} ({loc.sede})
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -763,7 +817,25 @@ export const AdminDashboard = ({
                 <div className="space-y-4 mt-2">
                   <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Local</label>
-                    <input className="w-full border p-2 rounded" value={formData.local || ''} onChange={e => setFormData({ ...formData, local: e.target.value })} placeholder="Ex: Escada de Emergência" />
+                    <select 
+                      className="w-full border p-2 rounded" 
+                      value={formData.locationId || ''} 
+                      onChange={e => {
+                        const selectedLocation = locations.find(loc => loc.id === e.target.value);
+                        setFormData({ 
+                          ...formData, 
+                          locationId: e.target.value,
+                          local: selectedLocation?.nome || ''
+                        });
+                      }}
+                    >
+                      <option value="">Selecione um local</option>
+                      {locations.map(loc => (
+                        <option key={loc.id} value={loc.id}>
+                          {loc.nome} - {loc.setor} ({loc.sede})
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>

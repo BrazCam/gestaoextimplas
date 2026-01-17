@@ -92,13 +92,21 @@ export const FloorPlanEditor = ({
 
     if (selectedItemType === 'location') {
       // Update location with coordinates (using lowercase column names for Supabase)
+      // IMPORTANT: Only include database fields, not computed properties like hasEquipment
+      const originalLocation = locations.find(loc => loc.id === selectedItemForPlacement.id);
+      if (!originalLocation) return;
+      
       const updatedLocation: Location = {
-        ...selectedItemForPlacement,
+        id: originalLocation.id,
+        nome: originalLocation.nome,
+        setor: originalLocation.setor,
+        sede: originalLocation.sede,
+        exigencia: originalLocation.exigencia,
         floorplanid: selectedMapId,
         coordx: x,
         coordy: y
       };
-      onUpdateLocation(selectedItemForPlacement.id, updatedLocation);
+      onUpdateLocation(originalLocation.id, updatedLocation);
     } else {
       // Update equipment with coordinates
       const updatedItem = {

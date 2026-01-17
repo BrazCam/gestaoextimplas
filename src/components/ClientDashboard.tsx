@@ -11,6 +11,7 @@ import {
 import { StatusBadge } from './StatusBadge';
 import { EquipmentDetailModal } from './EquipmentDetailModal';
 import { RealQRScanner } from './RealQRScanner';
+import { ReportsSection } from './ReportsSection';
 import { User, Extinguisher, Alarm, Hydrant, Lighting } from '@/types';
 
 interface ClientDashboardProps {
@@ -473,53 +474,13 @@ export const ClientDashboard = ({
         )}
 
         {activeTab === 'reports' && (
-          <div className="animate-fade-in">
-            <div className="bg-white rounded-xl shadow-sm border-l-4 border-orange-500 overflow-hidden min-h-[400px]">
-              <div className="px-6 py-4 border-b border-gray-100 flex items-center bg-orange-50 justify-between">
-                <div className="flex items-center">
-                  <AlertOctagon className="w-6 h-6 text-orange-600 mr-3" />
-                  <div>
-                    <h3 className="font-bold text-lg text-gray-800">Relatório Unificado de Não Conformidades</h3>
-                    <p className="text-sm text-orange-800">Consolidado de todos os sistemas de segurança</p>
-                  </div>
-                </div>
-                <button onClick={handleExportPDF} className="bg-white border border-orange-200 text-orange-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-orange-100 flex items-center gap-2">
-                  <FileDown className="w-4 h-4" /> Exportar PDF
-                </button>
-              </div>
-              {allNonConformities.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="bg-gray-50 text-gray-500 font-medium">
-                      <tr><th className="px-6 py-3">Sistema</th><th className="px-6 py-3">Data Apontamento</th><th className="px-6 py-3">ID</th><th className="px-6 py-3">Localização</th><th className="px-6 py-3">Descrição da Irregularidade</th><th className="px-6 py-3 text-center">Ação</th></tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {allNonConformities.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-orange-50/30">
-                          <td className="px-6 py-4 font-bold text-gray-700">{item.system}</td>
-                          <td className="px-6 py-4 font-mono text-gray-600">{new Date(item.date).toLocaleDateString('pt-BR')}</td>
-                          <td className="px-6 py-4 font-bold text-gray-800">{item.id}</td>
-                          <td className="px-6 py-4 text-gray-600">{item.local}</td>
-                          <td className="px-6 py-4"><span className="bg-red-100 text-red-800 px-2 py-1 rounded border border-red-200 font-medium">{item.desc}</span></td>
-                          <td className="px-6 py-4 text-center">
-                            <button onClick={() => setViewReport(item)} className="text-blue-600 hover:text-blue-800 p-2 hover:bg-blue-50 rounded-full transition-colors" title="Ver Detalhes">
-                              <Eye className="w-5 h-5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-64 text-center">
-                  <div className="bg-green-100 p-4 rounded-full mb-4"><CheckCircle className="w-12 h-12 text-green-600" /></div>
-                  <h3 className="text-xl font-bold text-gray-800">Tudo em ordem!</h3>
-                  <p className="text-gray-500">Nenhuma não conformidade pendente em nenhum sistema.</p>
-                </div>
-              )}
-            </div>
-          </div>
+          <ReportsSection 
+            extinguishers={extinguishers}
+            hydrants={hydrants}
+            alarms={alarms}
+            lighting={lighting}
+            notify={notify}
+          />
         )}
       </main>
     </div>
