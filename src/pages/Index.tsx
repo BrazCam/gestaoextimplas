@@ -29,9 +29,7 @@ const Index = () => {
   const [hydrants, setHydrants] = useState<Hydrant[]>([]);
   const [lighting, setLighting] = useState<Lighting[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
-  const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([
-    { id: 'PLAN-001', name: 'Planta Térreo - Bloco A', sede: 'Matriz', image: 'https://img.freepik.com/vetores-gratis/plantas-arquitetonicas-planas_23-2147640323.jpg' }
-  ]);
+  const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' | 'info' | 'warning' } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,12 +41,13 @@ const Index = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [extRes, alarmsRes, hydRes, lightRes, locRes] = await Promise.all([
+      const [extRes, alarmsRes, hydRes, lightRes, locRes, floorRes] = await Promise.all([
         supabase.from('extinguishers').select('*'),
         supabase.from('alarms').select('*'),
         supabase.from('hydrants').select('*'),
         supabase.from('lighting').select('*'),
-        supabase.from('locations').select('*')
+        supabase.from('locations').select('*'),
+        supabase.from('floorplans').select('*')
       ]);
 
       if (extRes.data) setExtinguishers(extRes.data as unknown as Extinguisher[]);
@@ -56,6 +55,15 @@ const Index = () => {
       if (hydRes.data) setHydrants(hydRes.data as unknown as Hydrant[]);
       if (lightRes.data) setLighting(lightRes.data as unknown as Lighting[]);
       if (locRes.data) setLocations(locRes.data as unknown as Location[]);
+      if (floorRes.data) {
+        // Map database format to app format
+        setFloorPlans(floorRes.data.map((fp: any) => ({
+          id: fp.id,
+          name: fp.name,
+          sede: fp.sede,
+          image: fp.image_url
+        })));
+      }
     } catch (error) {
       console.error('Erro ao buscar dados:', error);
     } finally {
@@ -228,19 +236,86 @@ const Index = () => {
     else setView('client-dashboard');
   };
 
-  const handleAddFloorPlan = (plan: FloorPlan) => {
-    setFloorPlans(prev => [...prev, plan]);
-    notify("Planta adicionada com sucesso!", "success");
+  const handleAddFloorPlan = async (plan: FloorPlan) => {
+    // Upload image to storage if it's a base64 string
+    let imageUrl = plan.image;
+    if (plan.image && plan.image.startsWith('data:')) {
+      const base64Data = plan.image.split(',')[1];
+      const fileName = `${plan.id}-${Date.now()}.jpg`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('floorplans')
+        .upload(fileName, Buffer.from(base64Data, 'base64'), {
+          contentType: 'image/jpeg',
+          upsert: true
+        });
+      
+      if (uploadError) {
+        notify("Erro ao fazer upload da imagem: " + uploadError.message, "error");
+        return;
+      }
+      
+      const { data: urlData } = supabase.storage.from('floorplans').getPublicUrl(fileName);
+      imageUrl = urlData.publicUrl;
+    }
+
+    const { error } = await supabase.from('floorplans').insert([{
+      id: plan.id,
+      name: plan.name,
+      sede: plan.sede,
+      image_url: imageUrl
+    }] as any);
+
+    if (error) {
+      notify("Erro ao adicionar planta: " + error.message, "error");
+    } else {
+      notify("Planta adicionada com sucesso!", "success");
+      fetchData();
+    }
   };
 
-  const handleDeleteFloorPlan = (id: string) => {
-    setFloorPlans(prev => prev.filter(p => p.id !== id));
-    notify("Planta removida!", "success");
+  const handleDeleteFloorPlan = async (id: string) => {
+    const { error } = await supabase.from('floorplans').delete().eq('id', id);
+    if (error) {
+      notify("Erro ao remover planta: " + error.message, "error");
+    } else {
+      notify("Planta removida!", "success");
+      fetchData();
+    }
   };
 
-  const handleUpdateFloorPlan = (plan: FloorPlan) => {
-    setFloorPlans(prev => prev.map(p => p.id === plan.id ? plan : p));
-    notify("Planta atualizada!", "success");
+  const handleUpdateFloorPlan = async (plan: FloorPlan) => {
+    let imageUrl = plan.image;
+    if (plan.image && plan.image.startsWith('data:')) {
+      const base64Data = plan.image.split(',')[1];
+      const fileName = `${plan.id}-${Date.now()}.jpg`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('floorplans')
+        .upload(fileName, Buffer.from(base64Data, 'base64'), {
+          contentType: 'image/jpeg',
+          upsert: true
+        });
+      
+      if (uploadError) {
+        notify("Erro ao fazer upload da imagem: " + uploadError.message, "error");
+        return;
+      }
+      
+      const { data: urlData } = supabase.storage.from('floorplans').getPublicUrl(fileName);
+      imageUrl = urlData.publicUrl;
+    }
+
+    const { error } = await supabase.from('floorplans').update({
+      name: plan.name,
+      sede: plan.sede,
+      image_url: imageUrl
+    } as any).eq('id', plan.id);
+
+    if (error) {
+      notify("Erro ao atualizar planta: " + error.message, "error");
+    } else {
+      notify("Planta atualizada!", "success");
+      fetchData();
+    }
   };
 
   const handleAddLocation = async (location: Location) => {
@@ -376,6 +451,8 @@ const Index = () => {
           alarms={alarms}
           hydrants={hydrants}
           lighting={lighting}
+          locations={locations}
+          floorPlans={floorPlans}
           onLogout={() => { setCurrentUser(null); setView('login'); }}
           notify={notify}
         />
