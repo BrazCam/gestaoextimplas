@@ -328,14 +328,17 @@ const Index = () => {
     }
   };
 
-  const handleUpdateLocation = async (id: string, location: Location) => {
+  const handleUpdateLocation = async (id: string, location: Location): Promise<boolean> => {
     const { error } = await supabase.from('locations').update(location as any).eq('id', id);
     if (error) {
+      console.error('Erro ao atualizar local:', error);
       notify("Erro ao atualizar local: " + error.message, "error");
-    } else {
-      notify("Local atualizado com sucesso!", "success");
-      fetchData();
+      return false;
     }
+
+    notify("Local atualizado com sucesso!", "success");
+    await fetchData();
+    return true;
   };
 
   const handleDeleteLocation = async (id: string) => {
