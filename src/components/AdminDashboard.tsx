@@ -33,7 +33,7 @@ interface AdminDashboardProps {
   onAdd: (type: string, item: any) => void;
   onDelete: (type: string, id: string) => void;
   onAddLocation: (location: Location) => void;
-  onUpdateLocation: (id: string, location: Location) => void;
+  onUpdateLocation: (id: string, location: Location) => Promise<boolean> | boolean;
   onDeleteLocation: (id: string) => void;
   onAddFloorPlan: (plan: FloorPlan) => void;
   onDeleteFloorPlan: (id: string) => void;

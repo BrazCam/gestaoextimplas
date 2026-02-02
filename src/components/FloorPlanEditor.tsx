@@ -24,7 +24,7 @@ interface FloorPlanEditorProps {
   lighting: Lighting[];
   locations: Location[];
   onUpdate: (type: string, id: string, item: any) => void;
-  onUpdateLocation: (id: string, location: Location) => void;
+  onUpdateLocation: (id: string, location: Location) => Promise<boolean> | boolean;
   onClose: () => void;
   notify: (message: string, type?: 'error' | 'success' | 'info' | 'warning') => void;
 }
@@ -167,30 +167,45 @@ export const FloorPlanEditor = ({
       return;
     }
 
-    try {
-      for (const pending of pendingChanges) {
-        const originalLocation = locations.find(loc => loc.id === pending.locationId);
-        if (!originalLocation) continue;
-        
-        const updatedLocation: Location = {
-          id: originalLocation.id,
-          nome: originalLocation.nome,
-          setor: originalLocation.setor,
-          sede: originalLocation.sede,
-          exigencia: originalLocation.exigencia,
-          floorplanid: pending.floorplanid,
-          coordx: pending.coordx,
-          coordy: pending.coordy
-        };
-        
-        await onUpdateLocation(originalLocation.id, updatedLocation);
+    const changesToSave = [...pendingChanges];
+    const failed: PendingChange[] = [];
+    let savedCount = 0;
+
+    for (const pending of changesToSave) {
+      const originalLocation = locations.find(loc => loc.id === pending.locationId);
+      if (!originalLocation) {
+        failed.push(pending);
+        continue;
       }
-      
-      setPendingChanges([]);
-      notify(`${pendingChanges.length} ponto(s) salvo(s) com sucesso!`, "success");
-    } catch (error) {
-      notify("Erro ao salvar pontos.", "error");
+
+      const updatedLocation: Location = {
+        id: originalLocation.id,
+        nome: originalLocation.nome,
+        setor: originalLocation.setor,
+        sede: originalLocation.sede,
+        exigencia: originalLocation.exigencia,
+        floorplanid: pending.floorplanid,
+        coordx: pending.coordx,
+        coordy: pending.coordy
+      };
+
+      const ok = await Promise.resolve(onUpdateLocation(originalLocation.id, updatedLocation));
+      if (ok === false) {
+        failed.push(pending);
+        continue;
+      }
+
+      savedCount++;
     }
+
+    if (failed.length === 0) {
+      setPendingChanges([]);
+      notify(`${savedCount} ponto(s) salvo(s) com sucesso!`, "success");
+      return;
+    }
+
+    setPendingChanges(failed);
+    notify(`Salvei ${savedCount} ponto(s). ${failed.length} falhou(aram) — tente novamente.`, "warning");
   };
 
   const handleClearPending = () => {
