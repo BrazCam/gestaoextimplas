@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from 'react';
-import { ArrowLeft, CheckCircle, Map as MapIcon, MapPin, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Map as MapIcon, MapPin, AlertTriangle, Save, Undo } from 'lucide-react';
 import { Extinguisher, Hydrant, Alarm, Lighting, Location } from '@/types';
 
 interface FloorPlan {
@@ -7,6 +7,13 @@ interface FloorPlan {
   name: string;
   sede: string;
   image: string;
+}
+
+interface PendingChange {
+  locationId: string;
+  floorplanid: string;
+  coordx: number;
+  coordy: number;
 }
 
 interface FloorPlanEditorProps {
@@ -38,6 +45,7 @@ export const FloorPlanEditor = ({
   const [selectedItemForPlacement, setSelectedItemForPlacement] = useState<any>(null);
   const [selectedItemType, setSelectedItemType] = useState<'equipment' | 'location'>('location');
   const [hoveredLocation, setHoveredLocation] = useState<Location | null>(null);
+  const [pendingChanges, setPendingChanges] = useState<PendingChange[]>([]);
   const mapImageRef = useRef<HTMLImageElement>(null);
 
   // Combine all equipment items
@@ -50,11 +58,38 @@ export const FloorPlanEditor = ({
     ];
   }, [extinguishers, hydrants, alarms, lighting]);
 
-  // Get locations for current map (using lowercase floorplanid)
+  // Get locations for current map (including pending changes)
   const mapLocations = useMemo(() => {
     if (!selectedMapId) return [];
-    return locations.filter(loc => loc.floorplanid === selectedMapId);
-  }, [selectedMapId, locations]);
+    
+    // Get saved locations for this map
+    const savedLocations = locations.filter(loc => loc.floorplanid === selectedMapId);
+    
+    // Add pending locations for this map
+    const pendingForThisMap = pendingChanges.filter(p => p.floorplanid === selectedMapId);
+    const pendingLocationIds = pendingForThisMap.map(p => p.locationId);
+    
+    // Merge: for locations with pending changes, use pending coords
+    const mergedLocations = savedLocations.map(loc => {
+      const pending = pendingForThisMap.find(p => p.locationId === loc.id);
+      if (pending) {
+        return { ...loc, coordx: pending.coordx, coordy: pending.coordy };
+      }
+      return loc;
+    });
+    
+    // Add locations that have pending changes but aren't in savedLocations
+    pendingForThisMap.forEach(pending => {
+      if (!savedLocations.find(loc => loc.id === pending.locationId)) {
+        const originalLoc = locations.find(loc => loc.id === pending.locationId);
+        if (originalLoc) {
+          mergedLocations.push({ ...originalLoc, coordx: pending.coordx, coordy: pending.coordy, floorplanid: pending.floorplanid });
+        }
+      }
+    });
+    
+    return mergedLocations;
+  }, [selectedMapId, locations, pendingChanges]);
 
   // Sort locations: available (no equipment) first in green, then allocated in gray
   const sortedLocations = useMemo(() => {
@@ -63,10 +98,15 @@ export const FloorPlanEditor = ({
       const linkedEquipment = allEquipmentItems.find(item => 
         (item as any).locationId === loc.id
       );
+      
+      // Check if this location has pending changes
+      const hasPendingChange = pendingChanges.some(p => p.locationId === loc.id);
+      
       return {
         ...loc,
         hasEquipment: !!linkedEquipment,
-        linkedEquipment: linkedEquipment
+        linkedEquipment: linkedEquipment,
+        hasPendingChange
       };
     });
 
@@ -76,7 +116,7 @@ export const FloorPlanEditor = ({
       if (!a.hasEquipment && b.hasEquipment) return -1;
       return 0;
     });
-  }, [locations, allEquipmentItems]);
+  }, [locations, allEquipmentItems, pendingChanges]);
 
   // Get equipment linked to a location
   const getLinkedEquipment = (locationId: string) => {
@@ -91,22 +131,21 @@ export const FloorPlanEditor = ({
     const y = ((e.clientY - rect.top) / rect.height) * 100;
 
     if (selectedItemType === 'location') {
-      // Update location with coordinates (using lowercase column names for Supabase)
-      // IMPORTANT: Only include database fields, not computed properties like hasEquipment
-      const originalLocation = locations.find(loc => loc.id === selectedItemForPlacement.id);
-      if (!originalLocation) return;
-      
-      const updatedLocation: Location = {
-        id: originalLocation.id,
-        nome: originalLocation.nome,
-        setor: originalLocation.setor,
-        sede: originalLocation.sede,
-        exigencia: originalLocation.exigencia,
+      // Add to pending changes instead of saving immediately
+      const newPending: PendingChange = {
+        locationId: selectedItemForPlacement.id,
         floorplanid: selectedMapId,
         coordx: x,
         coordy: y
       };
-      onUpdateLocation(originalLocation.id, updatedLocation);
+      
+      // Remove existing pending change for this location if exists
+      setPendingChanges(prev => {
+        const filtered = prev.filter(p => p.locationId !== selectedItemForPlacement.id);
+        return [...filtered, newPending];
+      });
+      
+      notify("Ponto adicionado. Clique em 'Salvar' para confirmar.", "info");
     } else {
       // Update equipment with coordinates
       const updatedItem = {
@@ -116,10 +155,47 @@ export const FloorPlanEditor = ({
         coordY: y
       };
       onUpdate(selectedItemForPlacement.itemType, selectedItemForPlacement.id, updatedItem);
+      notify("Ponto de equipamento definido!", "success");
     }
 
     setSelectedItemForPlacement(null);
-    notify("Ponto definido com sucesso!", "success");
+  };
+
+  const handleSaveAll = async () => {
+    if (pendingChanges.length === 0) {
+      notify("Nenhuma alteração pendente para salvar.", "info");
+      return;
+    }
+
+    try {
+      for (const pending of pendingChanges) {
+        const originalLocation = locations.find(loc => loc.id === pending.locationId);
+        if (!originalLocation) continue;
+        
+        const updatedLocation: Location = {
+          id: originalLocation.id,
+          nome: originalLocation.nome,
+          setor: originalLocation.setor,
+          sede: originalLocation.sede,
+          exigencia: originalLocation.exigencia,
+          floorplanid: pending.floorplanid,
+          coordx: pending.coordx,
+          coordy: pending.coordy
+        };
+        
+        await onUpdateLocation(originalLocation.id, updatedLocation);
+      }
+      
+      setPendingChanges([]);
+      notify(`${pendingChanges.length} ponto(s) salvo(s) com sucesso!`, "success");
+    } catch (error) {
+      notify("Erro ao salvar pontos.", "error");
+    }
+  };
+
+  const handleClearPending = () => {
+    setPendingChanges([]);
+    notify("Alterações pendentes descartadas.", "info");
   };
 
   const getEquipmentIcon = (itemType: string) => {
@@ -133,6 +209,16 @@ export const FloorPlanEditor = ({
   };
 
   const selectedPlan = floorPlans.find(p => p.id === selectedMapId);
+
+  // Check if a location has pending changes
+  const hasPendingChange = (locationId: string) => {
+    return pendingChanges.some(p => p.locationId === locationId);
+  };
+
+  // Get pending coords for a location
+  const getPendingCoords = (locationId: string) => {
+    return pendingChanges.find(p => p.locationId === locationId);
+  };
 
   return (
     <div className="fixed inset-0 bg-slate-900 z-50 flex flex-col">
@@ -153,11 +239,35 @@ export const FloorPlanEditor = ({
           ))}
         </select>
 
-        <div className="ml-auto text-sm text-slate-400">
-          {selectedItemForPlacement 
-            ? `Clique no mapa para posicionar ${selectedItemForPlacement.nome || selectedItemForPlacement.id}` 
-            : "Selecione um local na lista para posicionar no mapa"}
+        <div className="ml-auto flex items-center gap-2">
+          {pendingChanges.length > 0 && (
+            <>
+              <span className="text-yellow-400 text-sm">
+                {pendingChanges.length} alteração(ões) pendente(s)
+              </span>
+              <button
+                onClick={handleClearPending}
+                className="flex items-center gap-1 px-3 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg text-sm"
+              >
+                <Undo className="w-4 h-4" />
+                Descartar
+              </button>
+              <button
+                onClick={handleSaveAll}
+                className="flex items-center gap-1 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-sm font-bold"
+              >
+                <Save className="w-4 h-4" />
+                Salvar Tudo
+              </button>
+            </>
+          )}
         </div>
+      </div>
+
+      <div className="text-center py-2 bg-slate-700 text-slate-300 text-sm">
+        {selectedItemForPlacement 
+          ? `Clique no mapa para posicionar "${selectedItemForPlacement.nome || selectedItemForPlacement.id}"` 
+          : "Selecione um local na lista e clique no mapa para posicionar"}
       </div>
 
       <div className="flex-1 flex overflow-hidden">
@@ -176,17 +286,22 @@ export const FloorPlanEditor = ({
                 style={{ maxHeight: '80vh' }}
               />
               
-              {/* Render location points - using lowercase coordx/coordy */}
+              {/* Render saved location points */}
               {mapLocations.map((loc: Location) => {
                 if (loc.coordx === undefined || loc.coordy === undefined) return null;
                 const linkedEquipment = getLinkedEquipment(loc.id);
                 const hasEquipment = !!linkedEquipment;
+                const isPending = hasPendingChange(loc.id);
                 
                 return (
                   <div
                     key={loc.id}
                     className={`absolute w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs transform -translate-x-1/2 -translate-y-1/2 cursor-pointer hover:scale-125 transition-transform shadow-lg ${
-                      hasEquipment ? 'bg-gray-400 border-gray-600' : 'bg-green-500 border-green-700'
+                      isPending 
+                        ? 'bg-yellow-500 border-yellow-300 animate-pulse' 
+                        : hasEquipment 
+                          ? 'bg-gray-400 border-gray-600' 
+                          : 'bg-green-500 border-green-700'
                     }`}
                     style={{ left: `${loc.coordx}%`, top: `${loc.coordy}%` }}
                     onMouseEnter={() => setHoveredLocation(loc)}
@@ -209,6 +324,9 @@ export const FloorPlanEditor = ({
                 >
                   <p className="font-bold text-gray-800">{hoveredLocation.nome}</p>
                   <p className="text-xs text-gray-500">{hoveredLocation.setor} - {hoveredLocation.sede}</p>
+                  {hasPendingChange(hoveredLocation.id) && (
+                    <p className="text-xs text-yellow-600 mt-1 font-bold">⚠️ Não salvo</p>
+                  )}
                   {hoveredLocation.exigencia && (
                     <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
                       <AlertTriangle className="w-3 h-3" /> Exigência: {hoveredLocation.exigencia}
@@ -240,7 +358,7 @@ export const FloorPlanEditor = ({
           <h3 className="text-white font-bold mb-4">Locais Disponíveis</h3>
           
           {/* Legend */}
-          <div className="flex gap-4 mb-4 text-xs">
+          <div className="flex flex-wrap gap-3 mb-4 text-xs">
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded-full bg-green-500"></div>
               <span className="text-slate-400">Disponível</span>
@@ -249,48 +367,68 @@ export const FloorPlanEditor = ({
               <div className="w-3 h-3 rounded-full bg-gray-400"></div>
               <span className="text-slate-400">Ocupado</span>
             </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+              <span className="text-slate-400">Pendente</span>
+            </div>
           </div>
 
           <div className="space-y-2">
-            {sortedLocations.map((loc: any) => (
-              <div
-                key={loc.id}
-                onClick={() => {
-                  setSelectedItemForPlacement(loc);
-                  setSelectedItemType('location');
-                }}
-                className={`p-3 rounded-lg border text-sm cursor-pointer transition-colors ${
-                  selectedItemForPlacement?.id === loc.id 
-                    ? 'bg-purple-600 text-white border-purple-400' 
-                    : loc.hasEquipment
-                      ? 'bg-slate-700 text-slate-400 border-slate-600'
-                      : 'bg-green-900/30 text-green-300 border-green-700/50 hover:bg-green-900/50'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <MapPin className={`w-4 h-4 ${loc.hasEquipment ? 'text-gray-400' : 'text-green-400'}`} />
-                    <span className="font-bold">{loc.nome}</span>
+            {sortedLocations.map((loc: any) => {
+              const pending = getPendingCoords(loc.id);
+              const isOnCurrentMap = loc.floorplanid === selectedMapId || (pending && pending.floorplanid === selectedMapId);
+              
+              return (
+                <div
+                  key={loc.id}
+                  onClick={() => {
+                    setSelectedItemForPlacement(loc);
+                    setSelectedItemType('location');
+                  }}
+                  className={`p-3 rounded-lg border text-sm cursor-pointer transition-colors ${
+                    selectedItemForPlacement?.id === loc.id 
+                      ? 'bg-purple-600 text-white border-purple-400' 
+                      : loc.hasPendingChange
+                        ? 'bg-yellow-900/30 text-yellow-300 border-yellow-700/50'
+                        : loc.hasEquipment
+                          ? 'bg-slate-700 text-slate-400 border-slate-600'
+                          : 'bg-green-900/30 text-green-300 border-green-700/50 hover:bg-green-900/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <MapPin className={`w-4 h-4 ${
+                        loc.hasPendingChange 
+                          ? 'text-yellow-400' 
+                          : loc.hasEquipment 
+                            ? 'text-gray-400' 
+                            : 'text-green-400'
+                      }`} />
+                      <span className="font-bold">{loc.nome}</span>
+                    </div>
+                    {isOnCurrentMap && (loc.coordx !== undefined || pending) && (
+                      <CheckCircle className={`w-4 h-4 ${loc.hasPendingChange ? 'text-yellow-400' : 'text-green-500'}`} />
+                    )}
                   </div>
-                  {loc.floorplanid === selectedMapId && loc.coordx !== undefined && (
-                    <CheckCircle className="w-4 h-4 text-green-500" />
+                  <p className="text-xs opacity-70 mt-1">{loc.setor} - {loc.sede}</p>
+                  {loc.exigencia && (
+                    <p className="text-xs mt-1 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" /> {loc.exigencia}
+                    </p>
+                  )}
+                  {loc.hasPendingChange && (
+                    <p className="text-xs mt-1 text-yellow-400 font-bold">⚠️ Não salvo</p>
+                  )}
+                  {loc.linkedEquipment && (
+                    <div className="mt-2 pt-2 border-t border-slate-600">
+                      <p className="text-xs">
+                        {getEquipmentIcon(loc.linkedEquipment.itemType)} {loc.linkedEquipment.id}
+                      </p>
+                    </div>
                   )}
                 </div>
-                <p className="text-xs opacity-70 mt-1">{loc.setor} - {loc.sede}</p>
-                {loc.exigencia && (
-                  <p className="text-xs mt-1 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" /> {loc.exigencia}
-                  </p>
-                )}
-                {loc.linkedEquipment && (
-                  <div className="mt-2 pt-2 border-t border-slate-600">
-                    <p className="text-xs">
-                      {getEquipmentIcon(loc.linkedEquipment.itemType)} {loc.linkedEquipment.id}
-                    </p>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
