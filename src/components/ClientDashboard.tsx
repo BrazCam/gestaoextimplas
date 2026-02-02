@@ -248,7 +248,13 @@ export const ClientDashboard = ({
 
   const mapLocations = useMemo(() => {
     if (!selectedMapId) return [];
-    return locations.filter(loc => loc.floorplanid === selectedMapId && loc.coordx !== undefined && loc.coordy !== undefined);
+    // Show locations that match the floorplan OR have coords but no floorplanid assigned (legacy data)
+    return locations.filter(loc => {
+      const hasCoords = loc.coordx !== undefined && loc.coordx !== null && loc.coordy !== undefined && loc.coordy !== null;
+      const matchesFloorplan = loc.floorplanid === selectedMapId;
+      const noFloorplanAssigned = !loc.floorplanid || loc.floorplanid === '';
+      return hasCoords && (matchesFloorplan || noFloorplanAssigned);
+    });
   }, [selectedMapId, locations]);
 
   const getLinkedEquipment = (locationId: string) => {
@@ -412,7 +418,7 @@ export const ClientDashboard = ({
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm"><span className="text-gray-500">Total</span> <span className="font-bold">{annualStats.ext.total}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-green-600 flex items-center gap-1"><CheckCircle className="w-3 h-3"/> Em Dia</span> <span className="font-bold text-green-600">{annualStats.ext.ok}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-yellow-600 flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> Vence Mês</span> <span className="font-bold text-yellow-600">{annualStats.ext.expiring}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-yellow-600 flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> Vence esse Mês</span> <span className="font-bold text-yellow-600">{annualStats.ext.expiring}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-red-600 flex items-center gap-1"><AlertOctagon className="w-3 h-3"/> Vencido</span> <span className="font-bold text-red-600">{annualStats.ext.expired}</span></div>
                 </div>
               </div>
@@ -423,7 +429,7 @@ export const ClientDashboard = ({
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm"><span className="text-gray-500">Total</span> <span className="font-bold">{annualStats.hyd.total}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-green-600 flex items-center gap-1"><CheckCircle className="w-3 h-3"/> Em Dia</span> <span className="font-bold text-green-600">{annualStats.hyd.ok}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-yellow-600 flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> Vence Mês</span> <span className="font-bold text-yellow-600">{annualStats.hyd.expiring}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-yellow-600 flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> Vence esse Mês</span> <span className="font-bold text-yellow-600">{annualStats.hyd.expiring}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-red-600 flex items-center gap-1"><AlertOctagon className="w-3 h-3"/> Vencido</span> <span className="font-bold text-red-600">{annualStats.hyd.expired}</span></div>
                 </div>
               </div>
@@ -434,7 +440,7 @@ export const ClientDashboard = ({
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm"><span className="text-gray-500">Total</span> <span className="font-bold">{annualStats.light.total}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-green-600 flex items-center gap-1"><CheckCircle className="w-3 h-3"/> Em Dia</span> <span className="font-bold text-green-600">{annualStats.light.ok}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-yellow-600 flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> Vence Mês</span> <span className="font-bold text-yellow-600">{annualStats.light.expiring}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-yellow-600 flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> Vence esse Mês</span> <span className="font-bold text-yellow-600">{annualStats.light.expiring}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-red-600 flex items-center gap-1"><AlertOctagon className="w-3 h-3"/> Vencido</span> <span className="font-bold text-red-600">{annualStats.light.expired}</span></div>
                 </div>
               </div>
@@ -445,7 +451,7 @@ export const ClientDashboard = ({
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm"><span className="text-gray-500">Total</span> <span className="font-bold">{annualStats.alarm.total}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-green-600 flex items-center gap-1"><CheckCircle className="w-3 h-3"/> Em Dia</span> <span className="font-bold text-green-600">{annualStats.alarm.ok}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-yellow-600 flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> Vence Mês</span> <span className="font-bold text-yellow-600">{annualStats.alarm.expiring}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-yellow-600 flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> Vence esse Mês</span> <span className="font-bold text-yellow-600">{annualStats.alarm.expiring}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-red-600 flex items-center gap-1"><AlertOctagon className="w-3 h-3"/> Vencido</span> <span className="font-bold text-red-600">{annualStats.alarm.expired}</span></div>
                 </div>
               </div>
@@ -457,8 +463,8 @@ export const ClientDashboard = ({
                 <div className="h-64 relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={[{ name: 'Em Dia', value: annualStats.ext.ok, color: '#22c55e' }, { name: 'Vence Mês', value: annualStats.ext.expiring, color: '#eab308' }, { name: 'Vencido', value: annualStats.ext.expired, color: '#ef4444' }]} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                        {[{ name: 'Em Dia', value: annualStats.ext.ok, color: '#22c55e' }, { name: 'Vence Mês', value: annualStats.ext.expiring, color: '#eab308' }, { name: 'Vencido', value: annualStats.ext.expired, color: '#ef4444' }].map((entry, index) => (
+                    <Pie data={[{ name: 'Em Dia', value: annualStats.ext.ok, color: '#22c55e' }, { name: 'Vence esse Mês', value: annualStats.ext.expiring, color: '#eab308' }, { name: 'Vencido', value: annualStats.ext.expired, color: '#ef4444' }]} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                        {[{ name: 'Em Dia', value: annualStats.ext.ok, color: '#22c55e' }, { name: 'Vence esse Mês', value: annualStats.ext.expiring, color: '#eab308' }, { name: 'Vencido', value: annualStats.ext.expired, color: '#ef4444' }].map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
@@ -503,8 +509,8 @@ export const ClientDashboard = ({
                 <div className="h-64 relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={[{ name: 'Em Dia', value: annualStats.hyd.ok, color: '#22c55e' }, { name: 'Vence Mês', value: annualStats.hyd.expiring, color: '#eab308' }, { name: 'Vencido', value: annualStats.hyd.expired, color: '#ef4444' }]} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                        {[{ name: 'Em Dia', value: annualStats.hyd.ok, color: '#22c55e' }, { name: 'Vence Mês', value: annualStats.hyd.expiring, color: '#eab308' }, { name: 'Vencido', value: annualStats.hyd.expired, color: '#ef4444' }].map((entry, index) => (
+                    <Pie data={[{ name: 'Em Dia', value: annualStats.hyd.ok, color: '#22c55e' }, { name: 'Vence esse Mês', value: annualStats.hyd.expiring, color: '#eab308' }, { name: 'Vencido', value: annualStats.hyd.expired, color: '#ef4444' }]} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                        {[{ name: 'Em Dia', value: annualStats.hyd.ok, color: '#22c55e' }, { name: 'Vence esse Mês', value: annualStats.hyd.expiring, color: '#eab308' }, { name: 'Vencido', value: annualStats.hyd.expired, color: '#ef4444' }].map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
