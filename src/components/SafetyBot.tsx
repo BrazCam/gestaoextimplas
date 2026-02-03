@@ -1,15 +1,31 @@
 import { useState, useEffect, useRef } from 'react';
 import { Bot, X, Sparkles, Send } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
-export const SafetyBot = () => {
-  const [isOpen, setIsOpen] = useState(false);
+interface SafetyBotProps {
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  showFloatingButton?: boolean;
+}
+
+export const SafetyBot = ({ isOpen: externalIsOpen, onOpenChange, showFloatingButton = true }: SafetyBotProps) => {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     { role: 'assistant', text: 'Olá! Sou seu assistente de Segurança Contra Incêndio. Dúvidas sobre NR-23, classes de fogo ou uso de extintores? Pergunte!' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Use external control if provided, otherwise use internal state
+  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
+  const setIsOpen = onOpenChange || setInternalIsOpen;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -49,6 +65,72 @@ export const SafetyBot = () => {
     }
   };
 
+  const chatContent = (
+    <div className="flex flex-col h-[400px]">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-800/50">
+        {messages.map((msg, i) => (
+          <div 
+            key={i} 
+            className={`p-3 rounded-xl text-sm max-w-[85%] ${
+              msg.role === 'user' 
+                ? 'bg-blue-600 text-white ml-auto' 
+                : 'bg-slate-700 text-gray-200'
+            }`}
+          >
+            {msg.text}
+          </div>
+        ))}
+        {isLoading && (
+          <div className="bg-slate-700 text-gray-400 p-3 rounded-xl text-sm max-w-[85%] animate-pulse">
+            Pensando...
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <div className="p-3 border-t border-slate-700 flex gap-2 bg-slate-900">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+          placeholder="Digite sua dúvida..."
+          className="flex-1 bg-slate-800 text-white border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <button 
+          onClick={handleSend}
+          disabled={isLoading}
+          className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg disabled:opacity-50"
+        >
+          <Send className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+
+  // If controlled externally (popup mode), render as Dialog
+  if (externalIsOpen !== undefined) {
+    return (
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="sm:max-w-md p-0 bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700 overflow-hidden">
+          <DialogHeader className="bg-gradient-to-r from-blue-600 to-purple-600 p-4">
+            <DialogTitle className="flex items-center gap-2 text-white">
+              <Bot className="w-6 h-6" />
+              <div>
+                <span className="font-bold">SafetyBot</span>
+                <div className="flex items-center gap-1 text-xs opacity-80 font-normal">
+                  <Sparkles className="w-3 h-3" /> Gemini AI Powered
+                </div>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          {chatContent}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Default floating button mode
   return (
     <>
       {isOpen && (
@@ -67,54 +149,18 @@ export const SafetyBot = () => {
               <X className="w-4 h-4" />
             </button>
           </div>
-
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-80 bg-slate-800/50">
-            {messages.map((msg, i) => (
-              <div 
-                key={i} 
-                className={`p-3 rounded-xl text-sm max-w-[85%] ${
-                  msg.role === 'user' 
-                    ? 'bg-blue-600 text-white ml-auto' 
-                    : 'bg-slate-700 text-gray-200'
-                }`}
-              >
-                {msg.text}
-              </div>
-            ))}
-            {isLoading && (
-              <div className="bg-slate-700 text-gray-400 p-3 rounded-xl text-sm max-w-[85%] animate-pulse">
-                Pensando...
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          <div className="p-3 border-t border-slate-700 flex gap-2 bg-slate-900">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Digite sua dúvida..."
-              className="flex-1 bg-slate-800 text-white border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button 
-              onClick={handleSend}
-              disabled={isLoading}
-              className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg disabled:opacity-50"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          </div>
+          {chatContent}
         </div>
       )}
 
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 right-6 ${isOpen ? 'bg-red-500 rotate-90' : 'bg-gradient-to-r from-blue-600 to-purple-600'} text-white p-4 rounded-full shadow-lg z-50 transition-all duration-300 hover:scale-110`}
-      >
-        {isOpen ? <X className="w-6 h-6" /> : <Bot className="w-8 h-8" />}
-      </button>
+      {showFloatingButton && (
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className={`fixed bottom-6 right-6 ${isOpen ? 'bg-red-500 rotate-90' : 'bg-gradient-to-r from-blue-600 to-purple-600'} text-white p-4 rounded-full shadow-lg z-50 transition-all duration-300 hover:scale-110`}
+        >
+          {isOpen ? <X className="w-6 h-6" /> : <Bot className="w-8 h-8" />}
+        </button>
+      )}
     </>
   );
 };

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { ShieldCheck, QrCode } from 'lucide-react';
+import { ShieldCheck, QrCode, Bot } from 'lucide-react';
 import { User, MOCK_USERS } from '@/types';
+import { SafetyBot } from '@/components/SafetyBot';
 
 interface LoginScreenProps {
   onLogin: (user: User) => void;
@@ -12,6 +13,7 @@ export const LoginScreen = ({ onLogin, onScanMode, notify }: LoginScreenProps) =
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [isBotOpen, setIsBotOpen] = useState(false);
 
   useEffect(() => {
     const savedEmail = localStorage.getItem('fs_email');
@@ -50,7 +52,16 @@ export const LoginScreen = ({ onLogin, onScanMode, notify }: LoginScreenProps) =
             <ShieldCheck className="text-white w-10 h-10" />
           </div>
           <p className="text-red-200 text-sm font-bold tracking-[0.2em] uppercase mb-1">Sistema Extimplas</p>
-          <h1 className="text-4xl font-black text-white leading-tight">GESTAO<br />EXTIMPLAS</h1>
+          <div className="flex items-center justify-center gap-3">
+            <h1 className="text-4xl font-black text-white leading-tight">GESTAO<br />EXTIMPLAS</h1>
+            <button
+              onClick={() => setIsBotOpen(true)}
+              className="bg-white/20 hover:bg-white/30 text-white p-3 rounded-full transition-all duration-300 hover:scale-110 shadow-lg"
+              title="Assistente de Segurança"
+            >
+              <Bot className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         <div className="p-8">
@@ -107,6 +118,9 @@ export const LoginScreen = ({ onLogin, onScanMode, notify }: LoginScreenProps) =
           </div>
         </div>
       </div>
+
+      {/* SafetyBot Popup */}
+      <SafetyBot isOpen={isBotOpen} onOpenChange={setIsBotOpen} showFloatingButton={false} />
     </div>
   );
 };
