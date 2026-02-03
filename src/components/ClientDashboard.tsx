@@ -247,7 +247,10 @@ export const ClientDashboard = ({
   }, [extinguishers, hydrants, alarms, lighting]);
 
   const mapLocations = useMemo(() => {
-    if (!selectedMapId) return [];
+    // IMPORTANT: floorPlans may contain "" (empty string) as a valid id in legacy data.
+    // So we must not treat empty string as "no selection".
+    const planExists = floorPlans.some(p => p.id === selectedMapId);
+    if (!planExists) return [];
     // Show locations that match the floorplan OR have coords but no floorplanid assigned (legacy data)
     return locations.filter(loc => {
       const hasCoords = loc.coordx !== undefined && loc.coordx !== null && loc.coordy !== undefined && loc.coordy !== null;
@@ -255,7 +258,7 @@ export const ClientDashboard = ({
       const noFloorplanAssigned = !loc.floorplanid || loc.floorplanid === '';
       return hasCoords && (matchesFloorplan || noFloorplanAssigned);
     });
-  }, [selectedMapId, locations]);
+  }, [selectedMapId, locations, floorPlans]);
 
   const getLinkedEquipment = (locationId: string) => {
     return allEquipmentItems.find(item => (item as any).locationId === locationId);
@@ -578,7 +581,7 @@ export const ClientDashboard = ({
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
-                  <span className="text-gray-600">Vence este Mês</span>
+                  <span className="text-gray-600">vence esse mes</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded-full bg-red-500"></div>
