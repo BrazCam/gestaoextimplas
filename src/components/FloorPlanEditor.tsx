@@ -60,7 +60,10 @@ export const FloorPlanEditor = ({
 
   // Get locations for current map (including pending changes)
   const mapLocations = useMemo(() => {
-    if (!selectedMapId) return [];
+    // IMPORTANT: floorPlans may contain "" (empty string) as a valid id in legacy data.
+    // So we must not treat empty string as "no selection".
+    const planExists = floorPlans.some(p => p.id === selectedMapId);
+    if (!planExists) return [];
     
     // Get saved locations for this map
     const savedLocations = locations.filter(loc => loc.floorplanid === selectedMapId);
@@ -89,7 +92,7 @@ export const FloorPlanEditor = ({
     });
     
     return mergedLocations;
-  }, [selectedMapId, locations, pendingChanges]);
+  }, [selectedMapId, locations, pendingChanges, floorPlans]);
 
   // Sort locations: available (no equipment) first in green, then allocated in gray
   const sortedLocations = useMemo(() => {
