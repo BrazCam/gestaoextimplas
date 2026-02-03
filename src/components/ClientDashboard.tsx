@@ -2,8 +2,9 @@ import { useState, useMemo } from 'react';
 import {
   LayoutDashboard, LogOut, Flame, Bell, Droplets, Lightbulb, Activity,
   ClipboardList, ScanLine, Eye, AlertTriangle, CheckCircle, AlertOctagon,
-  FileDown, X, MapPin, Map as MapIcon
+  FileDown, X, MapPin, Map as MapIcon, Bot
 } from 'lucide-react';
+import { SafetyBot } from './SafetyBot';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell
@@ -43,6 +44,7 @@ export const ClientDashboard = ({
   const [isScanning, setIsScanning] = useState(false);
   const [selectedMapId, setSelectedMapId] = useState(floorPlans[0]?.id || '');
   const [hoveredLocation, setHoveredLocation] = useState<Location | null>(null);
+  const [isBotOpen, setIsBotOpen] = useState(false);
 
   const rawData = useMemo(() => {
     switch (activeTab) {
@@ -377,7 +379,16 @@ export const ClientDashboard = ({
         <div className="flex items-center">
           <div className="bg-red-600 p-3 rounded-lg mr-4 shadow-sm"><LayoutDashboard className="text-white w-6 h-6" /></div>
           <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-4">
-            <span className="text-xs md:text-sm font-bold text-gray-500 uppercase tracking-wider">Painel do Cliente</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs md:text-sm font-bold text-gray-500 uppercase tracking-wider">Gestão Extimplas</span>
+              <button
+                onClick={() => setIsBotOpen(true)}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white p-2 rounded-full transition-all duration-300 hover:scale-110 shadow-md"
+                title="Assistente de Segurança"
+              >
+                <Bot className="w-4 h-4" />
+              </button>
+            </div>
             <div className="hidden md:block h-6 w-px bg-gray-300"></div>
             <h1 className="text-2xl md:text-3xl font-black text-gray-800 uppercase tracking-tighter leading-none">{user.name}</h1>
           </div>
@@ -757,6 +768,9 @@ export const ClientDashboard = ({
           />
         )}
       </main>
+
+      {/* SafetyBot Popup */}
+      <SafetyBot isOpen={isBotOpen} onOpenChange={setIsBotOpen} showFloatingButton={false} />
     </div>
   );
 };
