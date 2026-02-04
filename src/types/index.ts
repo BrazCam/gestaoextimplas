@@ -1,3 +1,4 @@
+// Legacy User interface for compatibility with existing components
 export interface User {
   id: string;
   name: string;
@@ -5,6 +6,9 @@ export interface User {
   password: string;
   role: 'client' | 'admin' | 'tech' | 'marista' | 'relocate';
 }
+
+// New role type used by authentication system
+export type AppRole = 'admin' | 'cliente' | 'tec' | 'reloc' | 'gestao';
 
 export interface HistoryLog {
   data: string;
@@ -128,7 +132,10 @@ export interface Lighting {
   coordY?: number;
 }
 
+// Legacy mock users - kept for reference but no longer used for authentication
+// Authentication is now handled via Supabase Auth with proper user roles
 export const MOCK_USERS: User[] = [
+  // These are just for reference - real auth uses Supabase
   { id: 'cli_001', name: 'Gestao Extimplas', email: 'cliente@demo.com', password: '123', role: 'client' },
   { id: 'admin_001', name: 'Gestor Master', email: 'admin@demo.com', password: '123', role: 'admin' },
   { id: 'tec_001', name: 'Técnico de Campo', email: 'tec@demo.com', password: '123', role: 'tech' },

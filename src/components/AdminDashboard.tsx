@@ -4,7 +4,8 @@ import {
   PlusCircle, Edit3, Trash2, X, Save, PackagePlus, Building2, Camera,
   Image as ImageIcon, FileDown, FileSpreadsheet, FileUp, Cpu, QrCode,
   SearchCode, RefreshCcw, ClipboardCheck, Search, FileText, MapPin,
-  Map as MapIcon, MousePointer2, ArrowLeft, CheckCircle, AlertTriangle, ClipboardList
+  Map as MapIcon, MousePointer2, ArrowLeft, CheckCircle, AlertTriangle, ClipboardList,
+  Users
 } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { RealQRScanner } from './RealQRScanner';
@@ -12,6 +13,7 @@ import { LaudoPdfImporter } from './LaudoPdfImporter';
 import { LaudoExtractorModal } from './LaudoExtractorModal';
 import { FloorPlanEditor } from './FloorPlanEditor';
 import { ReportsSection } from './ReportsSection';
+import { UserManagement } from './admin/UserManagement';
 import { compressImage } from '@/utils/imageCompression';
 import { Extinguisher, Alarm, Hydrant, Lighting, Location } from '@/types';
 
@@ -1028,7 +1030,7 @@ export const AdminDashboard = ({
           </div>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-9 gap-3 mb-8">
           {[
             { id: 'extinguishers', icon: Flame, label: 'Extintores' },
             { id: 'alarm', icon: Bell, label: 'Alarme' },
@@ -1036,6 +1038,7 @@ export const AdminDashboard = ({
             { id: 'lighting', icon: Lightbulb, label: 'Iluminação' },
             { id: 'locations', icon: Building2, label: 'Locais' },
             { id: 'floorPlans', icon: ImageIcon, label: 'Plantas' },
+            { id: 'users', icon: Users, label: 'Usuários', highlight: 'blue' },
             { id: 'reports', icon: ClipboardList, label: 'Relatórios', highlight: 'yellow' },
             { id: 'feeding', icon: Zap, label: 'Alimentação', highlight: 'orange' }
           ].map(tab => (
@@ -1046,6 +1049,7 @@ export const AdminDashboard = ({
                 activeTab === tab.id 
                   ? ((tab as any).highlight === 'orange' ? 'bg-orange-600 text-white border-orange-600' : 
                      (tab as any).highlight === 'yellow' ? 'bg-yellow-500 text-white border-yellow-500' : 
+                     (tab as any).highlight === 'blue' ? 'bg-blue-600 text-white border-blue-600' :
                      'bg-slate-800 text-white border-slate-800') 
                   : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
               }`}
@@ -1055,7 +1059,9 @@ export const AdminDashboard = ({
           ))}
         </div>
 
-        {activeTab === 'reports' ? (
+        {activeTab === 'users' ? (
+          <UserManagement notify={notify} />
+        ) : activeTab === 'reports' ? (
           <ReportsSection
             extinguishers={extinguishers}
             hydrants={hydrants}

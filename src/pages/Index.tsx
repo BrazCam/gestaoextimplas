@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth, AppRole } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { Toast } from '@/components/Toast';
-import { LoginScreen } from '@/components/LoginScreen';
+import { LoginForm, ChangePasswordForm } from '@/components/auth';
 import { AdminDashboard } from '@/components/AdminDashboard';
 import { InspectionMode } from '@/components/InspectionMode';
 import { ClientDashboard } from '@/components/ClientDashboard';
@@ -11,7 +13,7 @@ import { MaristaDashboard } from '@/components/MaristaDashboard';
 import { RelocateMode } from '@/components/RelocateMode';
 import { CorporateDashboard } from '@/components/CorporateDashboard';
 import { SafetyBot } from '@/components/SafetyBot';
-import { User, Extinguisher, Alarm, Hydrant, Lighting, HistoryLog, Location } from '@/types';
+import { Extinguisher, Alarm, Hydrant, Lighting, HistoryLog, Location, User } from '@/types';
 
 interface FloorPlan {
   id: string;
@@ -20,9 +22,32 @@ interface FloorPlan {
   image: string;
 }
 
-type ViewType = 'login' | 'admin-dashboard' | 'inspection-mode' | 'client-dashboard' | 'public-scan' | 'marista-dashboard' | 'relocate-mode' | 'corporate-dashboard';
+type ViewType = 'login' | 'change-password' | 'admin-dashboard' | 'inspection-mode' | 'client-dashboard' | 'public-scan' | 'marista-dashboard' | 'relocate-mode' | 'corporate-dashboard';
+
+// Map new roles to old role names for compatibility with existing components
+const mapRoleToLegacy = (role: AppRole): User['role'] => {
+  switch (role) {
+    case 'admin': return 'admin';
+    case 'cliente': return 'client';
+    case 'tec': return 'tech';
+    case 'reloc': return 'relocate';
+    case 'gestao': return 'marista';
+    default: return 'client';
+  }
+};
 
 const Index = () => {
+  const { 
+    isAuthenticated, 
+    isLoading: authLoading, 
+    profile, 
+    roles, 
+    getPrimaryRole, 
+    forcarTrocaSenha,
+    signOut 
+  } = useAuth();
+  const { empresa, isLoading: empresaLoading } = useEmpresa();
+  
   const [view, setView] = useState<ViewType>('login');
   const [extinguishers, setExtinguishers] = useState<Extinguisher[]>([]);
   const [alarms, setAlarms] = useState<Alarm[]>([]);
@@ -30,16 +55,68 @@ const Index = () => {
   const [lighting, setLighting] = useState<Lighting[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' | 'info' | 'warning' } | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(false);
 
+  // Create a legacy user object for compatibility with existing components
+  const legacyUser: User | null = useMemo(() => {
+    if (!profile) return null;
+    const primaryRole = getPrimaryRole();
+    return {
+      id: profile.id,
+      name: profile.nome || profile.email.split('@')[0],
+      email: profile.email,
+      password: '', // Not used in new auth
+      role: mapRoleToLegacy(primaryRole || 'cliente'),
+    };
+  }, [profile, getPrimaryRole]);
+
+  // Determine initial view based on auth state and role
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (authLoading || empresaLoading) return;
+    
+    if (!isAuthenticated) {
+      setView('login');
+      return;
+    }
+    
+    if (forcarTrocaSenha) {
+      setView('change-password');
+      return;
+    }
+    
+    const primaryRole = getPrimaryRole();
+    if (primaryRole) {
+      switch (primaryRole) {
+        case 'admin':
+          setView('admin-dashboard');
+          break;
+        case 'tec':
+          setView('inspection-mode');
+          break;
+        case 'gestao':
+          setView('corporate-dashboard');
+          break;
+        case 'reloc':
+          setView('relocate-mode');
+          break;
+        case 'cliente':
+        default:
+          setView('client-dashboard');
+          break;
+      }
+    }
+  }, [isAuthenticated, authLoading, empresaLoading, forcarTrocaSenha, getPrimaryRole]);
+
+  // Fetch data when authenticated
+  useEffect(() => {
+    if (isAuthenticated && !forcarTrocaSenha) {
+      fetchData();
+    }
+  }, [isAuthenticated, forcarTrocaSenha]);
 
   const fetchData = async () => {
-    setIsLoading(true);
+    setIsDataLoading(true);
     try {
       const [extRes, alarmsRes, hydRes, lightRes, locRes, floorRes] = await Promise.all([
         supabase.from('extinguishers').select('*'),
@@ -56,7 +133,6 @@ const Index = () => {
       if (lightRes.data) setLighting(lightRes.data as unknown as Lighting[]);
       if (locRes.data) setLocations(locRes.data as unknown as Location[]);
       if (floorRes.data) {
-        // Map database format to app format
         setFloorPlans(floorRes.data.map((fp: any) => ({
           id: fp.id,
           name: fp.name,
@@ -67,7 +143,7 @@ const Index = () => {
     } catch (error) {
       console.error('Erro ao buscar dados:', error);
     } finally {
-      setIsLoading(false);
+      setIsDataLoading(false);
     }
   };
 
@@ -87,6 +163,11 @@ const Index = () => {
 
   const cleanItemForTable = (tableName: string, item: any) => {
     const cleanItem = { ...item };
+    
+    // Add empresa_id if we have empresa context
+    if (empresa?.id) {
+      cleanItem.empresa_id = empresa.id;
+    }
     
     // Remove fields that don't belong to certain tables
     if (tableName === 'extinguishers') {
@@ -227,22 +308,12 @@ const Index = () => {
     }
   };
 
-  const handleLogin = (user: User) => {
-    setCurrentUser(user);
-    if (user.role === 'admin') setView('admin-dashboard');
-    else if (user.role === 'tech') setView('inspection-mode');
-    else if (user.role === 'marista') setView('corporate-dashboard');
-    else if (user.role === 'relocate') setView('relocate-mode');
-    else setView('client-dashboard');
-  };
-
   const handleAddFloorPlan = async (plan: FloorPlan) => {
-    // Upload image to storage if it's a base64 string
     let imageUrl = plan.image;
     if (plan.image && plan.image.startsWith('data:')) {
       const base64Data = plan.image.split(',')[1];
       const fileName = `${plan.id}-${Date.now()}.jpg`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('floorplans')
         .upload(fileName, Buffer.from(base64Data, 'base64'), {
           contentType: 'image/jpeg',
@@ -258,12 +329,18 @@ const Index = () => {
       imageUrl = urlData.publicUrl;
     }
 
-    const { error } = await supabase.from('floorplans').insert([{
+    const insertData: any = {
       id: plan.id,
       name: plan.name,
       sede: plan.sede,
       image_url: imageUrl
-    }] as any);
+    };
+    
+    if (empresa?.id) {
+      insertData.empresa_id = empresa.id;
+    }
+
+    const { error } = await supabase.from('floorplans').insert([insertData]);
 
     if (error) {
       notify("Erro ao adicionar planta: " + error.message, "error");
@@ -288,7 +365,7 @@ const Index = () => {
     if (plan.image && plan.image.startsWith('data:')) {
       const base64Data = plan.image.split(',')[1];
       const fileName = `${plan.id}-${Date.now()}.jpg`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('floorplans')
         .upload(fileName, Buffer.from(base64Data, 'base64'), {
           contentType: 'image/jpeg',
@@ -319,7 +396,12 @@ const Index = () => {
   };
 
   const handleAddLocation = async (location: Location) => {
-    const { error } = await supabase.from('locations').insert([location] as any);
+    const insertData: any = { ...location };
+    if (empresa?.id) {
+      insertData.empresa_id = empresa.id;
+    }
+    
+    const { error } = await supabase.from('locations').insert([insertData] as any);
     if (error) {
       notify("Erro ao adicionar local: " + error.message, "error");
     } else {
@@ -367,7 +449,7 @@ const Index = () => {
       data: today,
       descricao,
       tipo: 'Realocação',
-      tecnico: currentUser?.name || 'Operador',
+      tecnico: legacyUser?.name || 'Operador',
       details: ignorouExigencia ? {
         ignorouExigencia: true,
         exigenciaLocal: targetLocation.exigencia,
@@ -386,7 +468,23 @@ const Index = () => {
     await fetchData();
   };
 
-  if (isLoading && view !== 'login') {
+  const handleLogout = async () => {
+    await signOut();
+    setView('login');
+  };
+
+  // Loading state
+  if (authLoading || empresaLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white">
+        <RefreshCw className="w-12 h-12 animate-spin text-blue-500 mb-4" />
+        <p>Carregando...</p>
+      </div>
+    );
+  }
+
+  // Data loading state
+  if (isDataLoading && isAuthenticated && !forcarTrocaSenha && view !== 'login' && view !== 'change-password') {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white">
         <RefreshCw className="w-12 h-12 animate-spin text-blue-500 mb-4" />
@@ -406,14 +504,28 @@ const Index = () => {
       )}
 
       {view === 'login' && (
-        <LoginScreen
-          onLogin={handleLogin}
+        <LoginForm
+          onSuccess={() => {}}
           onScanMode={() => setView('public-scan')}
           notify={notify}
         />
       )}
 
-      {view === 'admin-dashboard' && currentUser?.role === 'admin' && (
+      {view === 'change-password' && (
+        <ChangePasswordForm
+          onSuccess={() => {
+            const primaryRole = getPrimaryRole();
+            if (primaryRole === 'admin') setView('admin-dashboard');
+            else if (primaryRole === 'tec') setView('inspection-mode');
+            else if (primaryRole === 'gestao') setView('corporate-dashboard');
+            else if (primaryRole === 'reloc') setView('relocate-mode');
+            else setView('client-dashboard');
+          }}
+          notify={notify}
+        />
+      )}
+
+      {view === 'admin-dashboard' && legacyUser && roles.includes('admin') && (
         <AdminDashboard
           extinguishers={extinguishers}
           alarms={alarms}
@@ -430,54 +542,54 @@ const Index = () => {
           onAddFloorPlan={handleAddFloorPlan}
           onDeleteFloorPlan={handleDeleteFloorPlan}
           onUpdateFloorPlan={handleUpdateFloorPlan}
-          onLogout={() => { setCurrentUser(null); setView('login'); }}
+          onLogout={handleLogout}
           notify={notify}
         />
       )}
 
-      {view === 'inspection-mode' && currentUser?.role === 'tech' && (
+      {view === 'inspection-mode' && legacyUser && roles.includes('tec') && (
         <InspectionMode
           extinguishers={extinguishers}
           alarms={alarms}
           hydrants={hydrants}
           lighting={lighting}
           onAddInspection={handleAddInspection}
-          onLogout={() => { setCurrentUser(null); setView('login'); }}
+          onLogout={handleLogout}
           notify={notify}
         />
       )}
 
-      {view === 'client-dashboard' && currentUser?.role === 'client' && (
+      {view === 'client-dashboard' && legacyUser && roles.includes('cliente') && (
         <ClientDashboard
-          user={currentUser}
-          extinguishers={extinguishers.filter(e => e.clientId === currentUser.id)}
+          user={legacyUser}
+          extinguishers={extinguishers}
           alarms={alarms}
           hydrants={hydrants}
           lighting={lighting}
           locations={locations}
           floorPlans={floorPlans}
-          onLogout={() => { setCurrentUser(null); setView('login'); }}
+          onLogout={handleLogout}
           notify={notify}
         />
       )}
 
-      {view === 'corporate-dashboard' && currentUser?.role === 'marista' && (
+      {view === 'corporate-dashboard' && legacyUser && roles.includes('gestao') && (
         <CorporateDashboard
           extinguishers={extinguishers}
           hydrants={hydrants}
           alarms={alarms}
           lighting={lighting}
           floorPlans={floorPlans}
-          onLogout={() => { setCurrentUser(null); setView('login'); }}
+          onLogout={handleLogout}
         />
       )}
 
-      {view === 'relocate-mode' && currentUser?.role === 'relocate' && (
+      {view === 'relocate-mode' && legacyUser && roles.includes('reloc') && (
         <RelocateMode
           locations={locations}
           extinguishers={extinguishers}
           onRelocate={handleRelocate}
-          onLogout={() => { setCurrentUser(null); setView('login'); }}
+          onLogout={handleLogout}
           notify={notify}
         />
       )}
@@ -490,8 +602,8 @@ const Index = () => {
         />
       )}
 
-      {/* SafetyBot - Visible on all views except login and public-scan */}
-      {view !== 'login' && view !== 'public-scan' && <SafetyBot />}
+      {/* SafetyBot - Visible on authenticated views except change-password */}
+      {isAuthenticated && view !== 'login' && view !== 'public-scan' && view !== 'change-password' && <SafetyBot />}
     </div>
   );
 };
