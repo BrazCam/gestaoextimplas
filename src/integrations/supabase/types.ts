@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           anoFabricacao: string | null
           created_at: string | null
+          empresa_id: string | null
           fotoLocal: string | null
           historico: Json | null
           id: string
@@ -35,6 +36,7 @@ export type Database = {
         Insert: {
           anoFabricacao?: string | null
           created_at?: string | null
+          empresa_id?: string | null
           fotoLocal?: string | null
           historico?: Json | null
           id: string
@@ -52,6 +54,7 @@ export type Database = {
         Update: {
           anoFabricacao?: string | null
           created_at?: string | null
+          empresa_id?: string | null
           fotoLocal?: string | null
           historico?: Json | null
           id?: string
@@ -66,6 +69,41 @@ export type Database = {
           ultimaVistoria?: string | null
           ultimoTeste?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "alarms_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      empresas: {
+        Row: {
+          created_at: string
+          dominio: string
+          id: string
+          nome: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dominio: string
+          id?: string
+          nome: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dominio?: string
+          id?: string
+          nome?: string
+          status?: string
+          updated_at?: string
+        }
         Relationships: []
       }
       extinguishers: {
@@ -74,6 +112,7 @@ export type Database = {
           clientId: string | null
           codigoBarras: string | null
           created_at: string | null
+          empresa_id: string | null
           fabricacao: string | null
           fotoLocal: string | null
           historico: Json | null
@@ -96,6 +135,7 @@ export type Database = {
           clientId?: string | null
           codigoBarras?: string | null
           created_at?: string | null
+          empresa_id?: string | null
           fabricacao?: string | null
           fotoLocal?: string | null
           historico?: Json | null
@@ -118,6 +158,7 @@ export type Database = {
           clientId?: string | null
           codigoBarras?: string | null
           created_at?: string | null
+          empresa_id?: string | null
           fabricacao?: string | null
           fotoLocal?: string | null
           historico?: Json | null
@@ -135,11 +176,20 @@ export type Database = {
           ultimaManutencao?: string | null
           ultimaVistoria?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "extinguishers_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       floorplans: {
         Row: {
           created_at: string
+          empresa_id: string | null
           id: string
           image_url: string
           name: string
@@ -148,6 +198,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          empresa_id?: string | null
           id: string
           image_url: string
           name: string
@@ -156,19 +207,29 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          empresa_id?: string | null
           id?: string
           image_url?: string
           name?: string
           sede?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "floorplans_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       hydrants: {
         Row: {
           anoFabricacao: string | null
           comprimento: string | null
           created_at: string | null
+          empresa_id: string | null
           fabricante: string | null
           fotoLocal: string | null
           historico: Json | null
@@ -188,6 +249,7 @@ export type Database = {
           anoFabricacao?: string | null
           comprimento?: string | null
           created_at?: string | null
+          empresa_id?: string | null
           fabricante?: string | null
           fotoLocal?: string | null
           historico?: Json | null
@@ -207,6 +269,7 @@ export type Database = {
           anoFabricacao?: string | null
           comprimento?: string | null
           created_at?: string | null
+          empresa_id?: string | null
           fabricante?: string | null
           fotoLocal?: string | null
           historico?: Json | null
@@ -222,7 +285,15 @@ export type Database = {
           ultimaVistoria?: string | null
           ultimoTesteHidro?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "hydrants_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lighting: {
         Row: {
@@ -230,6 +301,7 @@ export type Database = {
           autonomia: string | null
           bateria: string | null
           created_at: string | null
+          empresa_id: string | null
           fotoLocal: string | null
           historico: Json | null
           id: string
@@ -247,6 +319,7 @@ export type Database = {
           autonomia?: string | null
           bateria?: string | null
           created_at?: string | null
+          empresa_id?: string | null
           fotoLocal?: string | null
           historico?: Json | null
           id: string
@@ -264,6 +337,7 @@ export type Database = {
           autonomia?: string | null
           bateria?: string | null
           created_at?: string | null
+          empresa_id?: string | null
           fotoLocal?: string | null
           historico?: Json | null
           id?: string
@@ -276,13 +350,22 @@ export type Database = {
           tipo?: string | null
           ultimaVistoria?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "lighting_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       locations: {
         Row: {
           coordx: number | null
           coordy: number | null
           created_at: string | null
+          empresa_id: string | null
           exigencia: string | null
           floorplanid: string | null
           id: string
@@ -294,6 +377,7 @@ export type Database = {
           coordx?: number | null
           coordy?: number | null
           created_at?: string | null
+          empresa_id?: string | null
           exigencia?: string | null
           floorplanid?: string | null
           id: string
@@ -305,6 +389,7 @@ export type Database = {
           coordx?: number | null
           coordy?: number | null
           created_at?: string | null
+          empresa_id?: string | null
           exigencia?: string | null
           floorplanid?: string | null
           id?: string
@@ -312,17 +397,103 @@ export type Database = {
           sede?: string | null
           setor?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "locations_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          empresa_id: string
+          forcar_troca_senha: boolean
+          id: string
+          nome: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          empresa_id: string
+          forcar_troca_senha?: boolean
+          id: string
+          nome?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          empresa_id?: string
+          forcar_troca_senha?: boolean
+          id?: string
+          nome?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_empresa_by_domain: { Args: { _dominio: string }; Returns: string }
+      get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "cliente" | "tec" | "reloc" | "gestao"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -449,6 +620,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "cliente", "tec", "reloc", "gestao"],
+    },
   },
 } as const
