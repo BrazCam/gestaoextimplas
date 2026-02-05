@@ -12,6 +12,7 @@ import { QRCodeReader } from '@/components/QRCodeReader';
 import { MaristaDashboard } from '@/components/MaristaDashboard';
 import { RelocateMode } from '@/components/RelocateMode';
 import { CorporateDashboard } from '@/components/CorporateDashboard';
+import { MasterDashboard } from '@/components/MasterDashboard';
 import { SafetyBot } from '@/components/SafetyBot';
 import { Extinguisher, Alarm, Hydrant, Lighting, HistoryLog, Location, User } from '@/types';
 
@@ -22,7 +23,7 @@ interface FloorPlan {
   image: string;
 }
 
-type ViewType = 'login' | 'change-password' | 'admin-dashboard' | 'inspection-mode' | 'client-dashboard' | 'public-scan' | 'marista-dashboard' | 'relocate-mode' | 'corporate-dashboard';
+type ViewType = 'login' | 'change-password' | 'admin-dashboard' | 'inspection-mode' | 'client-dashboard' | 'public-scan' | 'marista-dashboard' | 'relocate-mode' | 'corporate-dashboard' | 'master-dashboard';
 
 // Map new roles to old role names for compatibility with existing components
 const mapRoleToLegacy = (role: AppRole): User['role'] => {
@@ -88,6 +89,9 @@ const Index = () => {
     const primaryRole = getPrimaryRole();
     if (primaryRole) {
       switch (primaryRole) {
+        case 'master':
+          setView('master-dashboard');
+          break;
         case 'admin':
           setView('admin-dashboard');
           break;
@@ -515,7 +519,8 @@ const Index = () => {
         <ChangePasswordForm
           onSuccess={() => {
             const primaryRole = getPrimaryRole();
-            if (primaryRole === 'admin') setView('admin-dashboard');
+            if (primaryRole === 'master') setView('master-dashboard');
+            else if (primaryRole === 'admin') setView('admin-dashboard');
             else if (primaryRole === 'tec') setView('inspection-mode');
             else if (primaryRole === 'gestao') setView('corporate-dashboard');
             else if (primaryRole === 'reloc') setView('relocate-mode');
@@ -523,6 +528,10 @@ const Index = () => {
           }}
           notify={notify}
         />
+      )}
+
+      {view === 'master-dashboard' && roles.includes('master') && (
+        <MasterDashboard />
       )}
 
       {view === 'admin-dashboard' && legacyUser && roles.includes('admin') && (

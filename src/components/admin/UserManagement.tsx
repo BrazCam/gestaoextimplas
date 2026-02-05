@@ -41,6 +41,7 @@ const ROLE_LABELS: Record<AppRole, string> = {
   tec: 'Técnico',
   reloc: 'Realocação',
   gestao: 'Gestão',
+  master: 'Master',
 };
 
 const ROLE_COLORS: Record<AppRole, string> = {
@@ -49,6 +50,7 @@ const ROLE_COLORS: Record<AppRole, string> = {
   tec: 'bg-green-100 text-green-800',
   reloc: 'bg-purple-100 text-purple-800',
   gestao: 'bg-orange-100 text-orange-800',
+  master: 'bg-yellow-100 text-yellow-800',
 };
 
 export const UserManagement = ({ notify }: UserManagementProps) => {
