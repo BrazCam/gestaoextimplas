@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
-export type AppRole = 'admin' | 'cliente' | 'tec' | 'reloc' | 'gestao';
+export type AppRole = 'admin' | 'cliente' | 'tec' | 'reloc' | 'gestao' | 'master';
 
 export interface Profile {
   id: string;
@@ -230,8 +230,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const getPrimaryRole = (): AppRole | null => {
-    // Priority order for roles
-    const priority: AppRole[] = ['admin', 'gestao', 'cliente', 'tec', 'reloc'];
+    // Priority order for roles - master is highest
+    const priority: AppRole[] = ['master', 'admin', 'gestao', 'cliente', 'tec', 'reloc'];
     for (const role of priority) {
       if (roles.includes(role)) return role;
     }
