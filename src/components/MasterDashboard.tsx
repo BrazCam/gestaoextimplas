@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, Plus, Edit, Trash2, Users, LogOut, Settings } from 'lucide-react';
+import { Building2, Plus, Edit, Trash2, LogOut, Settings, KeyRound } from 'lucide-react';
 
 interface Empresa {
   id: string;
@@ -38,7 +38,7 @@ const MODULOS_DISPONIVEIS = [
 ];
 
 export const MasterDashboard = () => {
-  const { signOut, profile } = useAuth();
+  const { signOut, profile, session } = useAuth();
   const { toast } = useToast();
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [empresaModulos, setEmpresaModulos] = useState<Record<string, EmpresaModulo[]>>({});
@@ -48,6 +48,11 @@ export const MasterDashboard = () => {
   const [selectedEmpresa, setSelectedEmpresa] = useState<Empresa | null>(null);
   const [formData, setFormData] = useState({ nome: '', dominio: '', status: 'ativo' });
   const [selectedModulos, setSelectedModulos] = useState<string[]>([]);
+
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetPassword, setResetPassword] = useState('123456');
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     fetchEmpresas();
@@ -191,10 +196,47 @@ export const MasterDashboard = () => {
     );
   };
 
+  const handleResetPassword = async () => {
+    if (!resetEmail || !resetPassword) {
+      toast({ title: 'Informe email e nova senha', variant: 'destructive' });
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: {
+          email: resetEmail,
+          newPassword: resetPassword,
+          forcePasswordChange: true,
+        },
+      });
+
+      const message = (error as any)?.message || (data as any)?.error;
+      if (message) {
+        toast({ title: 'Erro ao redefinir senha', description: message, variant: 'destructive' });
+        return;
+      }
+
+      toast({
+        title: 'Senha redefinida com sucesso',
+        description: 'O usuário precisará trocar a senha no próximo login.',
+      });
+      setIsResetDialogOpen(false);
+      setResetEmail('');
+      setResetPassword('123456');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border px-6 py-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Building2 className="w-8 h-8 text-primary" />
             <div>
@@ -202,10 +244,63 @@ export const MasterDashboard = () => {
               <p className="text-sm text-muted-foreground">{profile?.email}</p>
             </div>
           </div>
-          <Button variant="ghost" onClick={signOut}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Sair
-          </Button>
+
+          <div className="flex items-center gap-2">
+            <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <KeyRound className="w-4 h-4 mr-2" />
+                  Redefinir senha
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Redefinir senha de usuário</DialogTitle>
+                </DialogHeader>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="resetEmail">Email do usuário</Label>
+                    <Input
+                      id="resetEmail"
+                      type="email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      placeholder="admin@kuhn.com"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="resetPassword">Nova senha</Label>
+                    <Input
+                      id="resetPassword"
+                      type="text"
+                      value={resetPassword}
+                      onChange={(e) => setResetPassword(e.target.value)}
+                      placeholder="123456"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Após redefinir, o usuário será obrigado a trocar a senha no próximo login.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setIsResetDialogOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button onClick={handleResetPassword} disabled={isResetting}>
+                      {isResetting ? 'Redefinindo...' : 'Redefinir'}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Button variant="ghost" onClick={signOut}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Sair
+            </Button>
+          </div>
         </div>
       </header>
 
