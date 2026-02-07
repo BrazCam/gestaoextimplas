@@ -1,1 +1,4 @@
 project_id = "ixahggoykrsaxbycyjcj"
+
+[functions.provision-empresa-users]
+verify_jwt = false
