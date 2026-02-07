@@ -109,15 +109,51 @@ export const MasterDashboard = () => {
         fetchEmpresas();
       }
     } else {
-      // Insert
-      const { error } = await supabase
+      // Insert new empresa
+      const { data: newEmpresa, error } = await supabase
         .from('empresas')
-        .insert({ nome: formData.nome, dominio: formData.dominio, status: formData.status });
+        .insert({ nome: formData.nome, dominio: formData.dominio, status: formData.status })
+        .select()
+        .single();
 
       if (error) {
         toast({ title: 'Erro ao criar empresa', variant: 'destructive' });
       } else {
-        toast({ title: 'Empresa criada com sucesso' });
+        // Automatically provision default users
+        toast({ title: 'Empresa criada! Criando usuários padrão...' });
+        
+        try {
+          const { data: provisionResult, error: provisionError } = await supabase.functions.invoke('provision-empresa-users', {
+            headers: {
+              Authorization: `Bearer ${session?.access_token}`,
+            },
+            body: {
+              empresaId: newEmpresa.id,
+              dominio: formData.dominio,
+            },
+          });
+
+          if (provisionError || provisionResult?.error) {
+            toast({ 
+              title: 'Empresa criada, mas houve erro ao criar usuários', 
+              description: provisionResult?.error || provisionError?.message,
+              variant: 'destructive' 
+            });
+          } else {
+            const users = provisionResult?.createdUsers || [];
+            toast({ 
+              title: 'Empresa e usuários criados com sucesso!',
+              description: `Usuários: ${users.map((u: any) => u.email).join(', ')}. Senha padrão: 123456`
+            });
+          }
+        } catch (e) {
+          toast({ 
+            title: 'Empresa criada, mas houve erro ao criar usuários', 
+            description: e instanceof Error ? e.message : 'Erro desconhecido',
+            variant: 'destructive' 
+          });
+        }
+        
         fetchEmpresas();
       }
     }
