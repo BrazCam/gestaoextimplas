@@ -42,12 +42,16 @@ const Index = () => {
     isAuthenticated, 
     isLoading: authLoading, 
     profile, 
+    empresa: authEmpresa,
     roles, 
     getPrimaryRole, 
     forcarTrocaSenha,
     signOut 
   } = useAuth();
-  const { empresa, isLoading: empresaLoading } = useEmpresa();
+  const { empresa: empresaCtx, isLoading: empresaLoading } = useEmpresa();
+  
+  // Use empresa from EmpresaContext, fallback to AuthContext
+  const empresa = empresaCtx || authEmpresa;
   
   const [view, setView] = useState<ViewType>('login');
   const [extinguishers, setExtinguishers] = useState<Extinguisher[]>([]);
