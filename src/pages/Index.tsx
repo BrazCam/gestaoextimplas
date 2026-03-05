@@ -77,9 +77,11 @@ const Index = () => {
     };
   }, [profile, getPrimaryRole]);
 
-  // Determine initial view based on auth state and role
+  // Determine initial view based on auth state and role (only on first load)
+  const [viewInitialized, setViewInitialized] = useState(false);
+  
   useEffect(() => {
-    if (authLoading || empresaLoading) return;
+    if (authLoading || empresaLoading || viewInitialized) return;
     
     if (!isAuthenticated) {
       setView('login');
@@ -93,6 +95,7 @@ const Index = () => {
     
     const primaryRole = getPrimaryRole();
     if (primaryRole) {
+      setViewInitialized(true);
       switch (primaryRole) {
         case 'master':
           setView('master-dashboard');
@@ -115,7 +118,7 @@ const Index = () => {
           break;
       }
     }
-  }, [isAuthenticated, authLoading, empresaLoading, forcarTrocaSenha, getPrimaryRole]);
+  }, [isAuthenticated, authLoading, empresaLoading, forcarTrocaSenha, getPrimaryRole, viewInitialized]);
 
   // Fetch data when authenticated
   useEffect(() => {
