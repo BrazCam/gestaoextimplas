@@ -320,6 +320,15 @@ const Index = () => {
     }
   };
 
+  const base64ToUint8Array = (base64: string): Uint8Array => {
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  };
+
   const handleAddFloorPlan = async (plan: FloorPlan) => {
     let imageUrl = plan.image;
     if (plan.image && plan.image.startsWith('data:')) {
@@ -327,7 +336,7 @@ const Index = () => {
       const fileName = `${plan.id}-${Date.now()}.jpg`;
       const { error: uploadError } = await supabase.storage
         .from('floorplans')
-        .upload(fileName, Buffer.from(base64Data, 'base64'), {
+        .upload(fileName, base64ToUint8Array(base64Data), {
           contentType: 'image/jpeg',
           upsert: true
         });
@@ -379,7 +388,7 @@ const Index = () => {
       const fileName = `${plan.id}-${Date.now()}.jpg`;
       const { error: uploadError } = await supabase.storage
         .from('floorplans')
-        .upload(fileName, Buffer.from(base64Data, 'base64'), {
+        .upload(fileName, base64ToUint8Array(base64Data), {
           contentType: 'image/jpeg',
           upsert: true
         });
