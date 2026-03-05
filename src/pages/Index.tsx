@@ -388,7 +388,7 @@ const Index = () => {
       const fileName = `${plan.id}-${Date.now()}.jpg`;
       const { error: uploadError } = await supabase.storage
         .from('floorplans')
-        .upload(fileName, Buffer.from(base64Data, 'base64'), {
+        .upload(fileName, base64ToUint8Array(base64Data), {
           contentType: 'image/jpeg',
           upsert: true
         });
