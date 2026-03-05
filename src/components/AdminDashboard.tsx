@@ -311,7 +311,9 @@ export const AdminDashboard = ({
 
     const max = numbers.length > 0 ? Math.max(...numbers) : 0;
     const nextNum = (max + 1).toString().padStart(3, '0');
-    return `${prefix}${nextNum}`;
+    // Add random suffix to avoid PK conflicts across empresas (RLS hides other empresas' rows)
+    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    return `${prefix}${nextNum}-${randomSuffix}`;
   };
 
   const handleOpenAdd = () => {
