@@ -482,6 +482,7 @@ const Index = () => {
 
   const handleLogout = async () => {
     await signOut();
+    setViewInitialized(false);
     setView('login');
   };
 
