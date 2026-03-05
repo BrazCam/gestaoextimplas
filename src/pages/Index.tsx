@@ -50,8 +50,9 @@ const Index = () => {
   } = useAuth();
   const { empresa: empresaCtx, isLoading: empresaLoading } = useEmpresa();
   
-  // Use empresa from EmpresaContext, fallback to AuthContext
-  const empresa = empresaCtx || authEmpresa;
+  // CRITICAL: Use empresa from AuthContext (user's profile) for data operations
+  // EmpresaContext is based on domain and may not match the user's actual empresa
+  const empresa = authEmpresa || empresaCtx;
   
   const [view, setView] = useState<ViewType>('login');
   const [extinguishers, setExtinguishers] = useState<Extinguisher[]>([]);
